@@ -67,9 +67,12 @@ static const char *xt(XStr id) {
 static uint8_t xRegion = 0, xSeed = 0, xAchPage = 0, xAccPage = 0;
 static TrainerRun xRun = {};
 static uint16_t xCarryHp = 0;
+static bool xRematch = false;
 static char xMsg[32] = "";
 static char xTrainerMsg[32] = "";
 static int8_t xLastAch = -1;
+static char xToast[30] = "";
+static uint32_t xToastUntil = 0;
 static uint32_t xNextSync = 0;
 static uint16_t xPool[DEX_COUNT];
 static const uint8_t X_PAGE_FIRST = 9;
@@ -145,6 +148,19 @@ static void xStartFight(TrainerKind kind, uint8_t idx) {
   if (!xRun.active) cardDirty = true;
 }
 
+static void xStartRematch() {
+  uint16_t n = xBuildPool(champion(xRegion).type, true);
+  ChallengeResult c = trainerRematchBegin(pet.extras, xRun, xRegion, pet.level(), (uint32_t)esp_random(), xPool, n);
+  if (c != CH_OK) { xSetMsg(challengeText(c)); cardDirty = true; sfxPlay(SFX_DENY); return; }
+  xRematch = true;
+  xCarryHp = 0;
+  cardOpen = false;
+  markUiDirty();
+  lockTouchBrief();
+  xStartMember();
+  if (!xRun.active) cardDirty = true;
+}
+
 // called from finishBattle() while a trainer run is active
 static void xOnTrainerMemberDone(bool won) {
   bool closeWin = battleRun.playerHp <= battleRun.playerMaxHp / 3;
@@ -155,7 +171,18 @@ static void xOnTrainerMemberDone(bool won) {
     xCarryHp = (uint16_t)(battleRun.playerHp + heal);
     TrainerOutcome o = trainerMemberResult(pet.extras, xRun, pet.balls, true,
                                            (uint8_t)random(100), (uint32_t)esp_random());
-    if (o.finished) {
+    if (o.finished && xRematch) {
+      RematchBonus rb = extrasRematchBonus(pet.extras, pet.balls, expeditionNowEpoch() / 86400UL);
+      if (rb.paid) {
+        pet.joy = (uint8_t)min(100, (int)pet.joy + rb.joy);
+        pet.gainBond(rb.bond);
+      }
+      xRematch = false;
+      pet.syncAchievements();
+      pet.commit();
+      snprintf(xTrainerMsg, sizeof(xTrainerMsg), "%s%s", xt(XS_WON), rb.paid ? " +2 Ultra" : "");
+      sfxPlay(SFX_BATTLE_WIN);
+    } else if (o.finished) {
       pet.joy = (uint8_t)min(100, (int)pet.joy + o.rewards.joy);
       pet.gainBond(o.rewards.bond);
       pet.syncAchievements();
@@ -171,6 +198,7 @@ static void xOnTrainerMemberDone(bool won) {
     battleReward = {};
     pet.applyBattleLoss();
     trainerMemberResult(pet.extras, xRun, pet.balls, false, 0, 0);
+    xRematch = false;
     snprintf(xTrainerMsg, sizeof(xTrainerMsg), "%s", xt(XS_LOST));
     sfxPlay(SFX_BATTLE_LOSS);
   }
@@ -184,7 +212,62 @@ static bool xContinueRun() {
   xStartMember();
   return true;
 }
-static void xAbortRun() { xRun.active = 0; xTrainerMsg[0] = 0; xCarryHp = 0; }
+static void xAbortRun() { xRun.active = 0; xRematch = false; xTrainerMsg[0] = 0; xCarryHp = 0; }
+
+
+// ---- equipped accessories drawn over the pet (simple vector shapes) ----
+static uint16_t xAccColor(uint8_t id) {
+  static const uint16_t C[8] = {C565(0xd8, 0x3a, 0x34), C565(0x3a, 0x6f, 0xd8), C565(0xe8, 0xc0, 0x2a), C565(0x3f, 0xa9, 0x5a),
+                                C565(0x8a, 0x4f, 0xc8), C565(0xe8, 0x7a, 0xa8), C565(0x30, 0x30, 0x38), C565(0xf0, 0xf0, 0xf4)};
+  return C[(id * 5 + (id >> 3)) & 7];
+}
+// cx: sprite centre, y0: top of the sprite canvas, w/h: canvas size in screen pixels
+static void xDrawAccessories(int cx, int y0, int w, int h) {
+  const AccState &a = pet.extras.acc;
+  uint8_t id;
+  // back items first so the body covers part of them
+  id = a.equipped[SLOT_BACK];
+  if (id < ACC_COUNT) {
+    uint16_t c = xAccColor(id);
+    int by = y0 + h * 45 / 100;
+    gfx->fillTriangle(cx - w * 2 / 5, by, cx - w * 3 / 5, by - h / 8, cx - w * 2 / 5, by + h / 6, c);
+    gfx->fillTriangle(cx + w * 2 / 5, by, cx + w * 3 / 5, by - h / 8, cx + w * 2 / 5, by + h / 6, c);
+  }
+  id = a.equipped[SLOT_HEAD];
+  if (id < ACC_COUNT) {
+    uint16_t c = xAccColor(id);
+    int hy = y0 + h * 12 / 100;
+    if (id == 7) gfx->drawEllipse(cx, hy - 8, w / 5, 6, C565(0xf4, 0xd8, 0x4a));
+    else if (id == 6) {
+      for (int i = -2; i <= 2; i++) gfx->fillTriangle(cx + i * w / 12 - 6, hy, cx + i * w / 12 + 6, hy, cx + i * w / 12, hy - 16, C565(0xe8, 0xc0, 0x2a));
+    } else {
+      gfx->fillRoundRect(cx - w / 6, hy - 10, w / 3, 12, 4, c);
+      gfx->fillRect(cx - w / 5, hy, w * 2 / 5, 4, c);
+    }
+  }
+  id = a.equipped[SLOT_FACE];
+  if (id < ACC_COUNT) {
+    uint16_t c = xAccColor(id);
+    int fy = y0 + h * 30 / 100;
+    int r = w / 12 > 5 ? w / 12 : 5;
+    if (id == 12) gfx->fillRect(cx - w / 8, fy + r, w / 4, 4, C565(0x30, 0x20, 0x20));
+    else if (id == 11) gfx->fillRect(cx - w / 6, fy, w / 3, r + 2, c);
+    else {
+      gfx->drawCircle(cx - w / 9, fy, r, c);
+      gfx->drawCircle(cx + w / 9, fy, r, c);
+      gfx->drawLine(cx - w / 9 + r, fy, cx + w / 9 - r, fy, c);
+    }
+  }
+  id = a.equipped[SLOT_NECK];
+  if (id < ACC_COUNT) {
+    uint16_t c = xAccColor(id);
+    int ny = y0 + h * 46 / 100;
+    if (id == 18) {
+      gfx->fillTriangle(cx - 12, ny - 6, cx - 12, ny + 6, cx, ny, c);
+      gfx->fillTriangle(cx + 12, ny - 6, cx + 12, ny + 6, cx, ny, c);
+    } else gfx->fillRoundRect(cx - w / 5, ny, w * 2 / 5, 8, 4, c);
+  }
+}
 
 // ---- shared drawing ----
 static void xHeader(const char *title) {
@@ -263,6 +346,11 @@ static void renderCardTrainer() {
     gfx->setTextColor(UI_BG_DAY);
     gfx->setCursor(CX - (int)strlen(buf) * 6, 238);
     gfx->print(buf);
+    gfx->fillRoundRect(82, 286, 302, 52, 14, UI_BAR_OK);
+    gfx->setTextColor(UI_BG_DAY);
+    gfx->setTextSize(3);
+    gfx->setCursor(CX - (int)strlen(xt(XS_FIGHT)) * 9, 301);
+    gfx->print(xt(XS_FIGHT));
   } else {
     const char *kind = t.kind == TK_GYM ? "Gym" : (t.kind == TK_E4 ? xt(XS_E4) : xt(XS_CHAMP));
     snprintf(buf, sizeof(buf), "%s %u", kind, t.kind == TK_CHAMPION ? 1 : t.index + 1);
@@ -318,7 +406,7 @@ static void xTrainerTap(int x, int y) {
       setRematchTier(g, xRegion, nt);
       pet.commit();
       cardDirty = true; sfxPlay(SFX_TAP);
-    }
+    } else if (y >= 286 && y <= 338 && x >= 82 && x <= 384) xStartRematch();
     return;
   }
   if (y >= 286 && y <= 338 && x >= 82 && x <= 384) xStartFight(t.kind, t.index);
@@ -643,8 +731,24 @@ bool extrasCardTap(uint8_t page, int x, int y) {
   return true;
 }
 
+// banner on the main screen when an achievement unlocks
+void xDrawToast() {
+  if (!xToast[0]) return;
+  int w = (int)strlen(xToast) * 12 + 28;
+  if (w > 380) w = 380;
+  gfx->fillRoundRect(CX - w / 2, 36, w, 34, 12, UI_BAR_OK);
+  gfx->setTextColor(UI_BG_DAY);
+  gfx->setTextSize(2);
+  gfx->setCursor(CX - (int)strlen(xToast) * 6, 46);
+  gfx->print(xToast);
+}
+
 // periodic work: achievements, daily seed, unlock sound
 void extrasLoop(uint32_t now) {
+  if (xToast[0] && (int32_t)(now - xToastUntil) >= 0) {
+    xToast[0] = 0;
+    markUiDirty();
+  }
   if ((int32_t)(now - xNextSync) < 0) return;
   xNextSync = now + 30000UL;
   uint32_t epoch = expeditionNowEpoch();
@@ -652,6 +756,11 @@ void extrasLoop(uint32_t now) {
   if (pet.syncAchievements()) {
     uint8_t id;
     while (achPopBanner(pet.extras.ach, &id)) xLastAch = (int8_t)id;
+    if (xLastAch >= 0) {
+      snprintf(xToast, sizeof(xToast), "%.18s!", achDef((uint8_t)xLastAch).name);
+      xToastUntil = now + 4000UL;
+      markUiDirty();
+    }
     sfxPlay(SFX_MEDAL);
     if (cardOpen) cardDirty = true;
   }

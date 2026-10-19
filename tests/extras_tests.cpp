@@ -74,6 +74,17 @@ int main() {
   assert(championsBeaten(x.gyms) == 1);
   assert(x.stat[AS_BADGES] == 8 && achUnlocked(x.ach, 31));
 
+  // daily rematch: needs a cleared region, bonus paid once per day
+  TrainerRun rr;
+  assert(trainerRematchBegin(x, rr, 3, 90, 1, pool, n) == CH_NEED_E4);
+  assert(regionComplete(x.gyms, 0));
+  assert(trainerRematchBegin(x, rr, 0, 90, 1, pool, n) == CH_OK && rr.len == CHAMPION_TEAM_SIZE);
+  BallInventory b2; ballInventoryInit(b2);
+  RematchBonus rb = extrasRematchBonus(x, b2, 20000);
+  assert(rb.paid && b2.count[BALL_ULTRA] == 2);
+  assert(!extrasRematchBonus(x, b2, 20000).paid);
+  assert(extrasRematchBonus(x, b2, 20001).paid && b2.count[BALL_ULTRA] == 4);
+
   puts("extras tests passed");
   return 0;
 }

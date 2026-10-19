@@ -37,6 +37,7 @@ void mvAutoLearn();
 void extrasLoop(uint32_t now);
 bool extrasCardTap(uint8_t page, int x, int y);
 void renderExtrasCard(uint8_t page);
+void xDrawToast();
 #endif
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
@@ -2005,6 +2006,9 @@ void render() {
     if (deadlineReached(millis(), choiceUntil)) choiceKind = 0;
     else drawChoiceDialog();
   }
+#ifdef TAMAPOKE_EXTRAS
+  xDrawToast();
+#endif
 
   flushStampedFrame();
 }
@@ -5886,6 +5890,17 @@ void drawPetPMD() {
   }
 
   drawPmdAct(act, (int)beh.x, PET_GROUND, now - beh.t0, loop || act == PMD_IDLE, false, 5);
+#ifdef TAMAPOKE_EXTRAS
+  if (!pet.isEgg() && !pet.sleeping) {
+    const PmdAct &ia = pmd.acts[PMD_IDLE];
+    if (ia.h) {
+      uint8_t sc = 170 / ia.h;
+      if (sc < 2) sc = 2;
+      if (sc > 5) sc = 5;
+      xDrawAccessories((int)beh.x, PET_GROUND - (ia.base ? ia.base : ia.h) * sc, ia.w * sc, ia.h * sc);
+    }
+  }
+#endif
 
   if (pet.showHeart()) drawMap(SPR_HEART, 32, (int)beh.x + 50, PET_GROUND - 190, 2, false);
 }

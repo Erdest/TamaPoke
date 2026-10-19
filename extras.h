@@ -16,7 +16,7 @@ struct ExtrasState {
   uint8_t version;
   uint8_t pendingEgg;          // 0 none, 1 legendary, 2 shiny legendary (applied by the next egg)
   uint8_t seedDay;             // low byte of the last day a daily seed was granted
-  uint8_t reserved;
+  uint8_t rematchDay;          // low byte of the last day the daily rematch bonus was paid
   uint32_t stat[AS_COUNT];     // lifetime counters feeding achievements
   Garden garden;
   GymProgress gyms;
@@ -60,6 +60,14 @@ struct TrainerRun {
 ChallengeResult trainerBegin(ExtrasState &x, TrainerRun &run, TrainerKind kind, uint8_t region,
                              uint8_t index, uint8_t playerLevel, uint32_t seed,
                              const uint16_t *pool, uint16_t poolLen);
+
+// Rematch against a region's Champion (needs the region cleared). Uses the region's tier.
+ChallengeResult trainerRematchBegin(ExtrasState &x, TrainerRun &run, uint8_t region,
+                                    uint8_t playerLevel, uint32_t seed,
+                                    const uint16_t *pool, uint16_t poolLen);
+// Daily bonus for a won rematch: 2 Ultra Balls + joy/bond. Once per day, returns true if paid.
+struct RematchBonus { bool paid; uint8_t joy, bond; };
+RematchBonus extrasRematchBonus(ExtrasState &x, BallInventory &balls, uint32_t dayNumber);
 
 struct TrainerOutcome {
   bool finished;        // trainer fight over (won all or lost)

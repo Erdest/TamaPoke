@@ -96,6 +96,31 @@ ChallengeResult trainerBegin(ExtrasState &x, TrainerRun &run, TrainerKind kind, 
   return CH_OK;
 }
 
+ChallengeResult trainerRematchBegin(ExtrasState &x, TrainerRun &run, uint8_t region,
+                                    uint8_t playerLevel, uint32_t seed,
+                                    const uint16_t *pool, uint16_t poolLen) {
+  memset(&run, 0, sizeof(run));
+  if (region >= REGION_COUNT) return CH_BAD_INDEX;
+  if (!regionComplete(x.gyms, region)) return CH_NEED_E4;
+  RematchTier tier = rematchTier(x.gyms, region);
+  uint8_t n = buildTeam(TK_CHAMPION, region, 0, playerLevel, tier, pool, poolLen, seed, run.team);
+  if (n == 0) return CH_BAD_INDEX;
+  run.active = 1; run.kind = TK_CHAMPION; run.region = region; run.index = 0;
+  run.tier = tier; run.len = n; run.pos = 0;
+  return CH_OK;
+}
+
+RematchBonus extrasRematchBonus(ExtrasState &x, BallInventory &balls, uint32_t dayNumber) {
+  RematchBonus b = {};
+  uint8_t d = (uint8_t)(dayNumber & 0xFF);
+  if (d == 0) d = 1;            // 0 means "never paid"
+  if (x.rematchDay == d) return b;
+  x.rematchDay = d;
+  ballAdd(balls, BALL_ULTRA, 2);
+  b.paid = true; b.joy = 10; b.bond = 3;
+  return b;
+}
+
 TrainerOutcome trainerMemberResult(ExtrasState &x, TrainerRun &run, BallInventory &balls,
                                    bool playerWon, uint8_t accRoll, uint32_t accPickRoll) {
   TrainerOutcome out = {};

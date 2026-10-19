@@ -66,6 +66,12 @@ the cadence filter confirms real rhythmic steps. Single bumps are rejected.
 - Walking slowly raises JOY and BOND within daily/hourly caps
 - Daily and lifetime steps improve wild Shiny odds and catching slightly
 
+## Full feature list (Gen 9)
+
+[FEATURES.md](FEATURES.md) documents the complete Gen 9 firmware feature set
+(1,025 Pokémon, battle gimmicks, multiplayer, gyms, berry garden and more).
+The currently released installer remains Gen 3 as described above.
+
 ## Basic controls
 
 - Tap the Pokémon: pet it and play its synthetic chirp in the full sound mode.

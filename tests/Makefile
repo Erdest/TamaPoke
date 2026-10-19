@@ -6,7 +6,7 @@ BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
 
-test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/gym_tests build/misc_tests web-test
+test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests web-test
 	./build/pet_tests
 	./build/battle_tests
 	./build/pokeball_tests
@@ -15,6 +15,8 @@ test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests
 	./build/move_tests
 	./build/gym_tests
 	./build/misc_tests
+	./build/progress_tests
+	./build/content_tests
 
 web-test:
 	node web_serial_tests.mjs
@@ -70,3 +72,9 @@ build/gym_tests: gym_tests.cpp ../gyms.cpp ../gyms.h ../dex.h | build
 MISC_SRC = ../expedition.cpp ../tradeevo.cpp ../regional.cpp ../gimmicks.cpp ../seasonal.cpp ../pokeballs.cpp ../garden.cpp
 build/misc_tests: misc_tests.cpp $(MISC_SRC) | build
 	$(CXX) $(CXXFLAGS) misc_tests.cpp $(MISC_SRC) -o $@
+
+build/progress_tests: progress_tests.cpp ../dexbits.cpp ../egg.cpp ../steps.cpp | build
+	$(CXX) $(CXXFLAGS) progress_tests.cpp ../dexbits.cpp ../egg.cpp ../steps.cpp -o $@
+
+build/content_tests: content_tests.cpp ../achievements.cpp ../accessories.cpp ../quiz.cpp ../battle.cpp | build
+	$(CXX) $(CXXFLAGS) content_tests.cpp ../achievements.cpp ../accessories.cpp ../quiz.cpp ../battle.cpp -o $@

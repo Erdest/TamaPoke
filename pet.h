@@ -282,6 +282,8 @@ public:
   bool isShinyRegistered(int16_t dex) const {
     return dex >= 1 && dex <= DEX_COUNT && (dexShinyReg[(dex - 1) >> 3] & (1 << ((dex - 1) & 7)));
   }
+  void commit() { save(); }                 // persist after external state changes
+  void gainBond(uint8_t a) { addBond(a); }  // bond change from outside (trainer rewards)
   PetFacts extrasFacts() const;   // inputs for achievement sync
   uint8_t syncAchievements();     // reports facts, returns newly unlocked
   uint16_t registeredCount() const;

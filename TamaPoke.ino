@@ -28,6 +28,12 @@
 #include "dayphase.h"
 #include "imu.h"
 #include "natures.h"
+#ifdef TAMAPOKE_EXTRAS
+#include "extras.h"
+void extrasLoop(uint32_t now);
+bool extrasCardTap(uint8_t page, int x, int y);
+void renderExtrasCard(uint8_t page);
+#endif
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
@@ -89,7 +95,11 @@ bool cardOpen = false;        // ficha del bicho (deslizar vertical)
 bool kbOpen = false;          // teclado para renombrar al bicho
 char nameBuf[12] = "";
 uint8_t nameLen = 0;
+#ifdef TAMAPOKE_EXTRAS
+#define CARD_COUNT 14
+#else
 #define CARD_COUNT 9
+#endif
 uint8_t cardPage = 0;         // 0 perfil ... 7 expedicion, 8 pasos/trail
 uint8_t boxPage = 0;
 uint8_t boxSort = 0;          // 0 dex, 1 tipo, 2 criados primero
@@ -513,6 +523,9 @@ void loop() {
   uint32_t now = millis();
   uint32_t loopStart = now;
   bool petChanged = pet.update(now);
+#ifdef TAMAPOKE_EXTRAS
+  extrasLoop(now);
+#endif
   if (petChanged && cardOpen && cardPage != 7) cardDirty = true;
 
   // avisa con un sonido cuando el bicho pasa a estar listo para evolucionar
@@ -1066,6 +1079,7 @@ void cleanTap(int16_t x, int16_t y);
 void typeTap(int16_t x, int16_t y);
 void expeditionCardTap(int16_t x, int16_t y);
 uint32_t expeditionNowEpoch();
+
 bool expeditionHudVisible();
 bool inExpeditionHudHit(int16_t x, int16_t y);
 void openExpeditionCard();
@@ -1292,6 +1306,10 @@ void onTap(int16_t x, int16_t y) {
       startSack();
     } else if (cardPage == 7) {
       expeditionCardTap(x, y);
+#ifdef TAMAPOKE_EXTRAS
+    } else if (cardPage >= 9 && extrasCardTap(cardPage, x, y)) {
+      // handled by the extras pages
+#endif
     } else if (y >= 400) {
       cardOpen = false;
       markUiDirty();
@@ -1471,6 +1489,11 @@ uint16_t inkColor() { return gNight ? UI_INK_NIGHT : UI_INK; }
 // ---------- escena de fondo: bioma del tipo + hora real del RTC ----------
 
 #define C565(r, g, b) ((uint16_t)((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3)))
+#ifdef TAMAPOKE_EXTRAS
+void startBattleWith(int16_t forcedDex, uint8_t forcedLevel, int8_t forcedShiny);
+uint16_t battleTypeColor(uint8_t type);
+#include "extras_ui.h"
+#endif
 #define HORIZON 232  // linea donde el cielo se encuentra con el suelo
 
 uint16_t lerp565(uint16_t a, uint16_t b, int i, int n) {
@@ -2928,6 +2951,9 @@ void maybeOfferMorning(uint32_t now) {
 }
 
 void closeBattle() {
+#ifdef TAMAPOKE_EXTRAS
+  xAbortRun();
+#endif
   battleOpen = false;
   battleResolved = false;
   battleAttackMenuUntil = 0;
@@ -2989,6 +3015,12 @@ void finishBattle() {
   if (battleResolved) return;
   battleResolved = true;
   battleDirty = true;
+#ifdef TAMAPOKE_EXTRAS
+  if (xRun.active) {
+    xOnTrainerMemberDone(battleTurn.playerWon);
+    return;
+  }
+#endif
   if (battleTurn.playerWon) {
     bool closeWin = battleRun.playerHp <= battleRun.playerMaxHp / 3;
     battleReward = pet.applyBattleWin(battleDex, closeWin);
@@ -3089,7 +3121,12 @@ void battleTap(int16_t x, int16_t y) {
       }
       return;
     }
-    if (x >= 118 && x <= 348 && y >= 392 && y <= 454) closeBattle();
+    if (x >= 118 && x <= 348 && y >= 392 && y <= 454) {
+#ifdef TAMAPOKE_EXTRAS
+      if (xRun.active && battleTurn.playerWon) { xContinueRun(); return; }
+#endif
+      closeBattle();
+    }
     return;
   }
   if (battleAttackMenuUntil) {
@@ -3399,6 +3436,14 @@ void renderBattle() {
         gfx->setCursor(CX - strlen(catchMsg) * 6, 378);
         gfx->print(catchMsg);
       }
+#ifdef TAMAPOKE_EXTRAS
+      if (xTrainerMsg[0]) {
+        gfx->setTextColor(UI_BAR_OK);
+        gfx->setTextSize(2);
+        gfx->setCursor(CX - (int)strlen(xTrainerMsg) * 6, 372);
+        gfx->print(xTrainerMsg);
+      }
+#endif
       gfx->fillRoundRect(118, 396, 230, 52, 14, UI_BAR_OK);
       gfx->setTextColor(UI_BG_DAY);
       gfx->setTextSize(3);
@@ -4890,6 +4935,9 @@ void renderCard() {
   else if (cardPage == 5) renderCardMedals();
   else if (cardPage == 6) renderCardProgress();
   else if (cardPage == 7) renderCardExpedition();
+#ifdef TAMAPOKE_EXTRAS
+  else if (cardPage >= 9) renderExtrasCard(cardPage);
+#endif
   else renderCardSteps();
 
   // indicador de paginas + ayuda

@@ -3,17 +3,24 @@
 [![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://shadowenemyx.github.io/TamaPoke/web/)
 [![MakerWorld](https://img.shields.io/badge/MakerWorld-3D%20case-00AE42?logo=bambulab&logoColor=white)](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)
 ![Board](https://img.shields.io/badge/board-ESP32--S3%20round%20AMOLED-E7352C?logo=espressif&logoColor=white)
-![Firmware](https://img.shields.io/badge/firmware-v1.36.1-4F93C4)
+![Firmware](https://img.shields.io/badge/firmware-v1.37.0--gen9--preview-4F93C4)
 ![Pokédex](https://img.shields.io/badge/Pok%C3%A9mon-386-E8503A)
 ![Languages](https://img.shields.io/badge/languages-6-FFCB05)
 
 TamaPoke is a Pokémon-inspired virtual pet for the
 **Waveshare ESP32-S3-Touch-AMOLED-1.75**. This is ShadowEnemyx's expanded fork.
 
-> Use only the ShadowEnemyx installer linked here. The upstream project is
+> **Gen 9 preview fork.** This repository adds an untested preview on top of ShadowEnemyx's TamaPoke
+> (natures, Poké Balls, moves, gyms, berry garden, achievements, optional 1025-species build).
+> Preview installer: **[web/gen9.html](https://erdest.github.io/TamaPoke/web/gen9.html)**
+> (works once GitHub Pages is enabled for this repository; otherwise serve the `web/` folder locally over
+> HTTPS or localhost). Checklist and limits: [docs/GEN9_STATUS.md](docs/GEN9_STATUS.md).
+> The stable installer below is ShadowEnemyx's and does **not** contain these changes.
+
+> Use only the ShadowEnemyx installer linked here for the stable version. The upstream project is
 > credited as the original source, but its installer contains a different build.
 
-## Install the current public version
+## Install the current public version (stable, upstream fork)
 
 ### [Open the ShadowEnemyx web installer](https://shadowenemyx.github.io/TamaPoke/web/)
 

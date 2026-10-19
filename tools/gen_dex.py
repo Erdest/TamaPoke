@@ -54,11 +54,20 @@ BATTLE_TYPE_IDS = {
 }
 
 
+def _gen9_rule_count():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'dex_gen9_evo.def.h')
+    try:
+        return sum(1 for line in open(path) if line.strip().startswith('{'))
+    except OSError:
+        return 0
+
+
 def main():
+    GEN9_RULES = _gen9_rule_count()
     out = []
     out.append("#pragma once\n#include <stdint.h>\n\n")
     out.append("// GENERADO por tools/gen_dex.py desde tools/dex_data.py - no editar\n\n")
-    out.append(f"#define DEX_COUNT {len(DEX)}\n")
+    out.append(f"#ifdef TAMAPOKE_GEN9_DEX\n#define DEX_COUNT 1025\n#else\n#define DEX_COUNT {len(DEX)}\n#endif\n")
     out.append("#define DEX_BITMAP_BYTES ((DEX_COUNT + 7) / 8)\n")
     out.append("#define DEX_EEVEE 133  // rama: 134/135/136/196/197\n\n")
     out.append("#define DEX_LANG_COUNT 6\n\n")
@@ -126,13 +135,15 @@ def main():
         t1 = f"TYPE_{type1.upper()}"
         t2 = "TYPE_NONE" if type2 is None else f"TYPE_{type2.upper()}"
         out.append(f'  {{ "{display}", {evo}, {lvl}, {rar}, 0x{acc:04X}, {hp}, {atk}, {df}, {spe}, {t1}, {t2}, {bio} }},  // {num} {type1}' + (f'/{type2}' if type2 else '') + '\n')
+    out.append('#ifdef TAMAPOKE_GEN9_DEX\n#include "dex_gen9_rows.def.h"\n#endif\n')
     out.append("};\n\n")
     out.append("// Evoluciones, incluidas ramas y condiciones especiales.\n")
     out.append("static const EvolutionRule EVOLUTION_RULES[] = {\n")
     for source, target, level, condition in rules:
         out.append(f"  {{ {source}, {target}, {level}, {condition_ids[condition]} }},\n")
+    out.append('#ifdef TAMAPOKE_GEN9_DEX\n#include "dex_gen9_evo.def.h"\n#endif\n')
     out.append("};\n")
-    out.append(f"#define EVOLUTION_RULE_COUNT {len(rules)}\n\n")
+    out.append(f"#ifdef TAMAPOKE_GEN9_DEX\n#define EVOLUTION_RULE_COUNT ({len(rules)} + {GEN9_RULES})\n#else\n#define EVOLUTION_RULE_COUNT {len(rules)}\n#endif\n\n")
     out.append("// nombres localizados en el orden de Lang: ES, EN, FR, DE, IT, PT\n")
     out.append("static const char *const DEX_NAMES[DEX_LANG_COUNT][DEX_COUNT + 1] = {\n")
     lang_labels = ("ES", "EN", "FR", "DE", "IT", "PT")
@@ -141,6 +152,7 @@ def main():
         out.append('  { "?"')
         for num, *_rest in DEX:
             out.append(f', "{LOCALIZED_NAMES[num][lang_idx]}"')
+        out.append(f'\n#ifdef TAMAPOKE_GEN9_DEX\n,\n#include "dex_gen9_names_{label}.def.h"\n#endif\n')
         out.append(" },\n")
     out.append("};\n\n")
     out.append("// el primer huevo de la partida: iniciales clasicos\n")

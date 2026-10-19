@@ -6,7 +6,7 @@ BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
 
-test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/movebattle_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests build/dex9_tests build/extras_tests web-test
+test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/movebattle_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests build/dex9_tests build/extras_tests gen9-test web-test
 	./build/pet_tests
 	./build/battle_tests
 	./build/pokeball_tests
@@ -122,3 +122,11 @@ build/dex9_tests: dex9_tests.cpp ../dexall.h ../dex_gen9.h ../gyms.cpp ../dex.h 
 
 build/extras_tests: extras_tests.cpp ../extras.cpp ../extras.h ../garden.cpp ../gyms.cpp ../achievements.cpp ../accessories.cpp ../steps.cpp ../pokeballs.cpp | build
 	$(CXX) $(CXXFLAGS) extras_tests.cpp ../extras.cpp ../garden.cpp ../gyms.cpp ../achievements.cpp ../accessories.cpp ../steps.cpp ../pokeballs.cpp -o $@
+
+# Same logic tests against the 1025-species table (-DTAMAPOKE_GEN9_DEX).
+GEN9_SRCS = pet_tests.cpp ../pet.cpp ../species_chirp.cpp ../thumb_format.cpp audio_stub.cpp ../natures.cpp ../pokeballs.cpp ../moves.cpp ../battle.cpp ../extras.cpp ../garden.cpp ../gyms.cpp ../achievements.cpp ../accessories.cpp ../steps.cpp
+.PHONY: gen9-test
+gen9-test: | build
+	mkdir -p build9
+	$(CXX) $(CXXFLAGS) -DTAMAPOKE_GEN9_DEX $(GEN9_SRCS) -o build9/pet_tests
+	./build9/pet_tests

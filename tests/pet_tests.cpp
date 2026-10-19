@@ -412,6 +412,12 @@ static void testCollectionRanksAndFrameSelection() {
   EXPECT_EQ(pet.knownDexCount(), 25);
 }
 
+#ifdef TAMAPOKE_GEN9_DEX
+constexpr int EEVEE_OPTIONS = 5;   // Sylveon joins the Gen 1-3 branches
+#else
+constexpr int EEVEE_OPTIONS = 4;
+#endif
+
 static void testSpeciesChirpProfilesAreValidAndIndividual() {
   uint16_t previousSignature = 0;
   for (int16_t dex = 1; dex <= DEX_COUNT; dex++) {
@@ -934,7 +940,7 @@ static void testGen2EvolutionBranches() {
   eevee.ageMinutes = 30 * MINUTES_PER_LEVEL;
   eevee.bond = 50;
   eevee.lastSeenEpoch = 1767276000UL;  // daytime
-  EXPECT_EQ(eevee.evolutionOptionCount(), 4);
+  EXPECT_EQ(eevee.evolutionOptionCount(), EEVEE_OPTIONS);
   EXPECT_TRUE(hasEvolutionTarget(eevee, 134));
   EXPECT_TRUE(hasEvolutionTarget(eevee, 135));
   EXPECT_TRUE(hasEvolutionTarget(eevee, 136));
@@ -942,7 +948,7 @@ static void testGen2EvolutionBranches() {
   EXPECT_TRUE(!hasEvolutionTarget(eevee, 197));
 
   eevee.lastSeenEpoch = 1767225600UL;  // night
-  EXPECT_EQ(eevee.evolutionOptionCount(), 4);
+  EXPECT_EQ(eevee.evolutionOptionCount(), EEVEE_OPTIONS);
   EXPECT_TRUE(hasEvolutionTarget(eevee, 197));
   EXPECT_TRUE(!hasEvolutionTarget(eevee, 196));
 

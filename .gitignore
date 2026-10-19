@@ -1,6 +1,7 @@
 # artefactos de compilacion
 build/
 tests/build/
+tests/build9/
 
 # cacheas y artefactos regenerables del taller
 tools/downloads/

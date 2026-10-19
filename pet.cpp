@@ -13,6 +13,9 @@ static int adjustedDrain(int base, int mod) {
 namespace {
 constexpr uint32_t BACKUP_MAGIC = 0x314B4254UL; // TBK1
 constexpr uint16_t BACKUP_VERSION = 1;
+// The browser USB tool caps backups at 512 bytes, so backups always carry the original
+// 386-species Pokedex bitmaps even when the firmware tracks more (TAMAPOKE_GEN9_DEX).
+constexpr size_t BACKUP_DEX_BYTES = (386 + 7) / 8;
 struct __attribute__((packed)) PetBackup {
   uint32_t magic; uint16_t version, length; uint32_t checksum;
   uint8_t fullness, joy, energy, hygiene, poops, weight, geneAtk, geneDef, geneSpe, trAtk, trDef, trSpe;
@@ -21,11 +24,20 @@ struct __attribute__((packed)) PetBackup {
   uint32_t ageMinutes, lastSeenEpoch, lastCareDay, lastPetInteractMinute, dailyGoalDay, expeditionEndEpoch, stepDay, stepsToday, stepsTotal, lastMorningDay, shakeDay, walkDay, walkHour, evoDeclinedAge;
   uint16_t streak, bestStreak, medals, totalMedals, lastMilestone, gameHi, strHi, catchHi, memoHi, cleanHi, typeHi, battleWins, battleLosses, battleStreak, bestBattleStreak, dexRewardMask;
   uint8_t dailyGoalType[DAILY_GOAL_COUNT], dailyGoalProgress[DAILY_GOAL_COUNT], itemCounts[EXP_ITEM_COUNT];
-  uint8_t dexReg[DEX_BITMAP_BYTES], dexShinyReg[DEX_BITMAP_BYTES], dexCaught[DEX_BITMAP_BYTES]; char nick[12];
+  uint8_t dexReg[BACKUP_DEX_BYTES], dexShinyReg[BACKUP_DEX_BYTES], dexCaught[BACKUP_DEX_BYTES]; char nick[12];
 };
 static_assert(sizeof(PetBackup) <= Pet::BACKUP_MAX_BYTES, "backup buffer too small");
 uint32_t backupChecksum(const uint8_t *data, size_t length) { uint32_t v=2166136261UL; for(size_t i=0;i<length;i++) v=(v^data[i])*16777619UL; return v; }
 }
+
+// Pokedex milestones. The first ten also drive the collection frames; the extra
+// ones only exist for the 1025-species build and just pay out a heart.
+#ifdef TAMAPOKE_GEN9_DEX
+static const uint16_t GOALS[] = { 10, 25, 50, 100, 151, 160, 200, 251, 300, 386, 500, 700, 900, 1025 };
+#else
+static const uint16_t GOALS[] = { 10, 25, 50, 100, 151, 160, 200, 251, 300, 386 };
+#endif
+static const uint8_t FRAME_GOAL_COUNT = 10;
 
 static void loadDexBitmap(Preferences &prefs, const char *key, uint8_t *dst, size_t dstLen) {
   memset(dst, 0, dstLen);
@@ -290,7 +302,7 @@ bool Pet::importBackup(const uint8_t *data, size_t length) {
   if (b.magic!=BACKUP_MAGIC || b.version!=BACKUP_VERSION || b.length!=sizeof(b) || sum!=backupChecksum(reinterpret_cast<const uint8_t*>(&b),sizeof(b)) || b.speciesId < -1 || b.speciesId > DEX_COUNT || b.eggTarget < 1 || b.eggTarget > DEX_COUNT || (b.expeditionRewardItem != EXP_ITEM_NONE && b.expeditionRewardItem >= EXP_ITEM_COUNT)) return false;
   fullness=b.fullness;joy=b.joy;energy=b.energy;hygiene=b.hygiene;poops=b.poops;weight=b.weight;geneAtk=b.geneAtk;geneDef=b.geneDef;geneSpe=b.geneSpe;trAtk=b.trAtk;trDef=b.trDef;trSpe=b.trSpe;berryKnown=b.berryKnown;shiny=b.shiny;eggShiny=b.eggShiny;starterPick=b.starterPick;eggTaps=b.eggTaps;careMistakes=b.careMistakes;lastEnd=b.lastEnd;bond=b.bond;collectionFrame=b.collectionFrame;dailyGoalDone=b.dailyGoalDone;expeditionRewardItem=b.expeditionRewardItem;stepDailyRewardMask=b.stepDailyRewardMask;stepMilestoneMask=b.stepMilestoneMask;pendingStepRewardMask=b.pendingStepRewardMask;shakeCountToday=b.shakeCountToday;walkJoyToday=b.walkJoyToday;walkJoyHour=b.walkJoyHour;walkBondToday=b.walkBondToday;evoDeclinedLv=b.evoDeclinedLv;
   speciesId=b.speciesId;eggTarget=b.eggTarget;ageMinutes=b.ageMinutes;lastSeenEpoch=b.lastSeenEpoch;lastCareDay=b.lastCareDay;lastPetInteractMinute=b.lastPetInteractMinute;dailyGoalDay=b.dailyGoalDay;expeditionEndEpoch=b.expeditionEndEpoch;stepDay=b.stepDay;stepsToday=b.stepsToday;stepsTotal=b.stepsTotal;lastMorningDay=b.lastMorningDay;shakeDay=b.shakeDay;walkDay=b.walkDay;walkHour=b.walkHour;evoDeclinedAge=b.evoDeclinedAge;streak=b.streak;bestStreak=b.bestStreak;medals=b.medals;totalMedals=b.totalMedals;lastMilestone=b.lastMilestone;gameHi=b.gameHi;strHi=b.strHi;catchHi=b.catchHi;memoHi=b.memoHi;cleanHi=b.cleanHi;typeHi=b.typeHi;battleWins=b.battleWins;battleLosses=b.battleLosses;battleStreak=b.battleStreak;bestBattleStreak=b.bestBattleStreak;dexRewardMask=b.dexRewardMask;
-  memcpy(dailyGoalType,b.dailyGoalType,sizeof(dailyGoalType));memcpy(dailyGoalProgress,b.dailyGoalProgress,sizeof(dailyGoalProgress));memcpy(itemCounts,b.itemCounts,sizeof(itemCounts));memcpy(dexReg,b.dexReg,sizeof(dexReg));memcpy(dexShinyReg,b.dexShinyReg,sizeof(dexShinyReg));memcpy(dexCaught,b.dexCaught,sizeof(dexCaught));memcpy(nick,b.nick,sizeof(nick));nick[sizeof(nick)-1]=0;ceremony=CER_NONE;if (collectionFrame >= unlockedCollectionFrameCount()) collectionFrame=0;save();return true;
+  memcpy(dailyGoalType,b.dailyGoalType,sizeof(dailyGoalType));memcpy(dailyGoalProgress,b.dailyGoalProgress,sizeof(dailyGoalProgress));memcpy(itemCounts,b.itemCounts,sizeof(itemCounts));memset(dexReg,0,sizeof(dexReg));memset(dexShinyReg,0,sizeof(dexShinyReg));memset(dexCaught,0,sizeof(dexCaught));memcpy(dexReg,b.dexReg,sizeof(b.dexReg));memcpy(dexShinyReg,b.dexShinyReg,sizeof(b.dexShinyReg));memcpy(dexCaught,b.dexCaught,sizeof(b.dexCaught));memcpy(nick,b.nick,sizeof(nick));nick[sizeof(nick)-1]=0;ceremony=CER_NONE;if (collectionFrame >= unlockedCollectionFrameCount()) collectionFrame=0;save();return true;
 }
 
 bool Pet::hasEvolutionPath(int16_t dex) const {
@@ -570,9 +582,8 @@ uint16_t Pet::knownDexCount() const {
 
 uint8_t Pet::collectionRank() const {
   uint16_t known = knownDexCount();
-  static const uint16_t GOALS[] = { 10, 25, 50, 100, 151, 160, 200, 251, 300, 386 };
   uint8_t rank = 0;
-  for (uint8_t i = 0; i < sizeof(GOALS) / sizeof(GOALS[0]); i++)
+  for (uint8_t i = 0; i < FRAME_GOAL_COUNT; i++)
     if (known >= GOALS[i]) rank = i + 1;
   return rank;
 }
@@ -590,16 +601,14 @@ bool Pet::setCollectionFrame(uint8_t frame) {
 }
 
 uint16_t Pet::nextDexGoal() const {
-  static const uint16_t GOALS[] = { 10, 25, 50, 100, 151, 160, 200, 251, 300, 386 };
   uint16_t known = knownDexCount();
   for (uint8_t i = 0; i < sizeof(GOALS) / sizeof(GOALS[0]); i++)
     if (known < GOALS[i]) return GOALS[i];
-  return 386;
+  return GOALS[sizeof(GOALS) / sizeof(GOALS[0]) - 1];
 }
 
 uint16_t Pet::applyDexRewards() {
   if (ceremony != CER_NONE || isEgg()) return 0;
-  static const uint16_t GOALS[] = { 10, 25, 50, 100, 151, 160, 200, 251, 300, 386 };
   uint16_t known = knownDexCount();
   uint16_t reached = 0;
   for (uint8_t i = 0; i < sizeof(GOALS) / sizeof(GOALS[0]); i++) {

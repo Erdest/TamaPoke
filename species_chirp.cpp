@@ -54,7 +54,7 @@ bool speciesChirpProfile(int16_t dex, SpeciesChirpProfile *out) {
   // bleibt der bisherige Klang erhalten; Gen 3 bekommt einen separaten,
   // hoerbaren Bereich, der innerhalb des sicheren Frequenzfensters bleibt.
   uint16_t dexPitch = dex <= 251 ? (uint16_t)(220 + dex * 9)
-                                : (uint16_t)(150 + (dex - 252) * 7);
+                                : (uint16_t)(150 + ((dex - 252) * 7) % 2450);
   out->notes[2] = {
     dexPitch,
     (uint16_t)(64 + ((seed >> 4) & 0x1F)),

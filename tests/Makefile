@@ -6,7 +6,7 @@ BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
 
-test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/movebattle_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests build/dex9_tests web-test
+test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/movebattle_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests build/dex9_tests build/extras_tests web-test
 	./build/pet_tests
 	./build/battle_tests
 	./build/pokeball_tests
@@ -19,6 +19,7 @@ test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests
 	./build/progress_tests
 	./build/content_tests
 	./build/system_tests
+	./build/extras_tests
 	./build/dex9_tests
 
 web-test:
@@ -100,3 +101,6 @@ build/system_tests: system_tests.cpp $(SYS_SRC) | build
 
 build/dex9_tests: dex9_tests.cpp ../dexall.h ../dex_gen9.h ../gyms.cpp ../dex.h | build
 	$(CXX) $(CXXFLAGS) dex9_tests.cpp ../gyms.cpp -o $@
+
+build/extras_tests: extras_tests.cpp ../extras.cpp ../extras.h ../garden.cpp ../gyms.cpp ../achievements.cpp ../accessories.cpp ../steps.cpp ../pokeballs.cpp | build
+	$(CXX) $(CXXFLAGS) extras_tests.cpp ../extras.cpp ../garden.cpp ../gyms.cpp ../achievements.cpp ../accessories.cpp ../steps.cpp ../pokeballs.cpp -o $@

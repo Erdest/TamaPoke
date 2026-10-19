@@ -29,7 +29,8 @@ like the upstream firmware.
 | Optional Gen 1–9 dex: 1,025 species, evolution rules, names in 6 languages | `TAMAPOKE_GEN9_DEX` |
 | Dex goals/chirps/backup format adapted to the larger dex | `TAMAPOKE_GEN9_DEX` |
 | Host-side unit tests for the new logic (`tests/`) | n/a |
-| Tools: `pack_static.py`, `gen_dex_gen9.py`, `make_thumbs.py --max`, `pack_bundle.py --gen9` | n/a |
+| Gen 4–9 sprite paks (one per generation) and installer button | n/a |
+| Tools: `pack_static.py`, `gen_dex_gen9.py`, `make_thumbs.py --max/--skip-missing`, `pack_bundle.py --gen9` | n/a |
 
 Planned but **not yet wired in**: Mega/Dynamax/Tera, regional forms, trade evolutions, Wonder Trade/PvP,
 party/box, photo mode, BLE notifications, watch face. Details, limits and a 10-point device test checklist
@@ -54,8 +55,11 @@ Browser flashing needs desktop **Chrome or Edge** over HTTPS or localhost.
   `http://localhost:8000/gen9.html`.
 
 Two builds are offered: `1.37.0-gen9-preview` (386 species, new features) and
-`1.37.0-gen9-1025-preview` (1,025 species). Sprites are **not** included in this repository; see
-[Sprite pipeline](#sprite-pipeline) and [CREDITS.md](CREDITS.md).
+`1.37.0-gen9-1025-preview` (1,025 species). The Gen 4–9 sprites (#387–1025) are in the repository as one update pak per generation
+(`web/sprites-gen4-update.pak` … `sprites-gen9-update.pak`, about 180 MB in total, PMD SpriteCollab art, CC BY-NC).
+`gen9.html` has an **Install Gen 4–9 sprites** button that sends them after the base 386. 52 species have no
+open-licence sprite and are left out; they appear without a picture. See [Sprite pipeline](#sprite-pipeline)
+and [CREDITS.md](CREDITS.md).
 
 For the unmodified stable release use the original installer:
 **[ShadowEnemyx web installer](https://shadowenemyx.github.io/TamaPoke/web/)** (firmware 1.36.1, 386 Pokémon).

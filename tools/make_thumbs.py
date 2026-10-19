@@ -11,6 +11,7 @@ estilo que la pantalla principal. Formato TPTH (little-endian):
   blobs:  u8 w, u8 h, u8 palCount, u16 pal[palCount], u8 data[w*h] (0xFF transp.)
 
   python3 tools/make_thumbs.py
+  python3 tools/make_thumbs.py --max 1025 --skip-missing   # blank thumbs for species without a sprite file
 """
 import os
 import struct
@@ -75,6 +76,10 @@ def main():
         dex_nums = list(range(1, top + 1))
     for dex in dex_nums:
         path = os.path.join(DIR, f'p{dex:03d}.bin')
+        if '--skip-missing' in sys.argv and not os.path.exists(path):
+            # no sprite shipped for this species: 1x1 transparent placeholder
+            blobs.append(struct.pack('<3B', 1, 1, 0) + b'\xff')
+            continue
         w, h, pal, data = read_pmd_idle_frame0(path)
         nw, nh, npal, ndata = shrink(w, h, pal, data)
         if len(npal) > 255:

@@ -51,7 +51,7 @@
       <span slot="unsupported">Browser not supported (use Chrome/Edge).</span>
       <span slot="not-allowed">Needs HTTPS or localhost.</span>
     </esp-web-install-button>
-    <p style="margin-top:1.25rem"><b>1025-species preview</b> (needs Gen 4–9 sprites on the SD card that you build yourself, see docs/GEN9_STATUS.md).</p>
+    <p style="margin-top:1.25rem"><b>1025-species preview</b> (needs the Gen 4–9 sprites from step 2 on the SD card).</p>
     <esp-web-install-button manifest="manifest-gen9-1025-preview.json?v=1.37.0">
       <button slot="activate">⚡ Install preview (1025 species)</button>
       <span slot="unsupported">Browser not supported (use Chrome/Edge).</span>
@@ -72,6 +72,13 @@
     </div>
     <p class="note">Do not unplug the board or remove the microSD during transfer.
       Existing Gen‑2 cards may use the same full process safely.</p>
+    <p style="margin-top:1rem"><b>Only for the 1025-species build:</b> then send the Gen 4–9 sprites
+      (#387–1025, six packages, about 180 MB, takes a while).</p>
+    <div class="row">
+      <button id="full9" disabled>⬇️ Install Gen 4–9 sprites</button>
+    </div>
+    <p class="note">52 species have no sprite in this set (no open-licence art exists for them);
+      they show without a picture.</p>
     <div class="bar" id="bar"><div></div></div>
     <pre id="log"></pre>
   </div>
@@ -94,6 +101,6 @@
 </div>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
-<script src="installer-gen3.js"></script>
+<script src="installer-gen9.js"></script>
 </body>
 </html>

@@ -34,7 +34,13 @@ PMD SpriteCollab (CC BY-NC 4.0, credited in CREDITS.md) covers most species; bui
 `python3 tools/pack_pmd.py $(seq 387 1025)`. Species it lacks can be filled with static frames using
 `python3 tools/pack_static.py` (PokeAPI/sprites: **Nintendo artwork, no open licence, do not commit**).
 Regenerate the dex tables with `python3 tools/gen_dex_gen9.py && python3 tools/gen_dex.py` (the `dex_gen9_*.def.h` files are generated).
-Then `python3 tools/make_thumbs.py --max 1025` and `python3 tools/pack_bundle.py --gen9`.
+Then `python3 tools/make_thumbs.py --max 1025 --skip-missing` (blank thumbnails for species without a sprite file) and
+`python3 tools/pack_bundle.py --gen9 --thumbs tools/sdcard/mons/thumbs.bin`, which writes one pak per generation
+(`web/sprites-gen4-update.pak` … `gen9`). `pack_bundle.py --gen9` skips static fallback frames automatically, so the
+Nintendo artwork never enters a published pak. Species without a sprite in the published set:
+514, 516, 520, 522, 523, 538, 558, 564, 565, 591, 592, 616, 618, 626, 668, 683, 732, 733, 735, 756, 765, 837, 838, 839,
+866, 870, 878, 893, 929, 931, 942, 943, 944, 945, 947, 949, 950, 954, 956, 962, 973, 986, 993, 999, 1001, 1002, 1003,
+1008, 1014, 1020, 1022, 1023. The web installer's **Install Gen 4–9 sprites** button sends the six paks in order.
 
 ## Things to verify by hand (no one has run this on a device yet)
 

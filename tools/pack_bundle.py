@@ -13,6 +13,7 @@ El instalador (web/index.html) lo descarga, lo parte por el indice y manda cada
 fichero a la placa con el protocolo PUT (igual que tools/send_sd.py).
 
 Flags locales: --gen2 (161–251), --gen3 (252–386) y --gen3-full (1–386).
+--gen9 [--thumbs PATH]: un pak por generacion 4-9 (#387-1025), web/sprites-genN-update.pak.
 """
 import os
 import struct
@@ -27,41 +28,56 @@ GEN3_FULL_OUT = os.path.join(HERE, '..', 'web', 'sprites-gen3-full.pak')
 PUBLIC_THUMBS = os.path.join(MONS, 'thumbs-public.bin')
 
 
+GEN_RANGES = {4: (387, 493), 5: (494, 649), 6: (650, 721),
+              7: (722, 809), 8: (810, 905), 9: (906, 1025)}
+
+
+def is_static_fallback(path):
+    """pack_static.py output (one idle frame, PokeAPI/Nintendo art): never shipped."""
+    with open(path, 'rb') as f:
+        head = f.read(5)
+    return len(head) == 5 and head[4] == 1
+
+
 def pack_gen9(args):
-    """Gen 4-9 (#387-1025) split into TPAK parts under GitHub's 100 MB limit.
-    thumbs.bin (built with make_thumbs.py --max 1025) goes in the first part."""
-    limit = 90 * 1048576
-    files = []
-    for n in range(387, 1026):
-        for pre in ('p', 'ps'):
-            f = os.path.join(MONS, f'{pre}{n:03d}.bin')
-            if os.path.exists(f):
-                files.append(f)
+    """One update pak per generation (Gen 4..9, #387-1025), like the Gen 2/3 updates.
+    Every pak also carries the complete 1025-entry thumbs.bin (pass --thumbs PATH,
+    default mons/thumbs.bin) so the gallery can address all entries after any subset.
+    Static fallback sprites from pack_static.py are skipped (no open licence)."""
     thumbs = os.path.join(MONS, 'thumbs.bin')
-    parts, cur, size = [], [thumbs] if os.path.exists(thumbs) else [], 0
-    for f in files:
-        sz = os.path.getsize(f)
-        if size + sz > limit:
-            parts.append(cur)
-            cur, size = [], 0
-        cur.append(f)
-        size += sz
-    if cur:
-        parts.append(cur)
-    if not files:
-        raise SystemExit('no gen4-9 sprites in ' + MONS)
-    for i, part in enumerate(parts, 1):
-        out_path = os.path.join(HERE, '..', 'web', f'sprites-gen9-part{i}.pak')
+    if '--thumbs' in args:
+        thumbs = args[args.index('--thumbs') + 1]
+    if not os.path.exists(thumbs):
+        raise SystemExit('missing thumbs index: ' + thumbs)
+    total = 0
+    for gen, (lo, hi) in GEN_RANGES.items():
+        files = []
+        for n in range(lo, hi + 1):
+            for pre in ('p', 'ps'):
+                f = os.path.join(MONS, f'{pre}{n:03d}.bin')
+                if os.path.exists(f) and not is_static_fallback(f):
+                    files.append(f)
+        if not files:
+            print(f'gen{gen}: no sprites, skipped')
+            continue
+        entries = [(os.path.basename(f), f) for f in files]
+        entries = [('mons/' + n, f) for n, f in entries] + [('mons/thumbs.bin', thumbs)]
+        out_path = os.path.join(HERE, '..', 'web', f'sprites-gen{gen}-update.pak')
+        blobs = [open(f, 'rb').read() for _, f in entries]
         with open(out_path, 'wb') as o:
             o.write(b'TPAK')
-            o.write(struct.pack('<H', len(part)))
-            blobs = [open(f, 'rb').read() for f in part]
-            for f, b in zip(part, blobs):
-                nb = ('mons/' + os.path.basename(f)).encode()
+            o.write(struct.pack('<H', len(entries)))
+            for (name, _), b in zip(entries, blobs):
+                nb = name.encode()
                 o.write(struct.pack('<B', len(nb)) + nb + struct.pack('<I', len(b)))
             for b in blobs:
                 o.write(b)
-        print(f'{os.path.normpath(out_path)}: {len(part)} files, {os.path.getsize(out_path) / 1048576:.1f} MB')
+        size = os.path.getsize(out_path)
+        total += size
+        print(f'{os.path.normpath(out_path)}: {len(entries)} files, {size / 1048576:.1f} MB')
+        if size > 95 * 1048576:
+            raise SystemExit('pak exceeds the 100 MB GitHub limit')
+    print(f'total {total / 1048576:.1f} MB')
 
 
 def main():

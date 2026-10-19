@@ -6,10 +6,12 @@ BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
 
-test: build/pet_tests build/battle_tests build/pokeball_tests web-test
+test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests web-test
 	./build/pet_tests
 	./build/battle_tests
 	./build/pokeball_tests
+	./build/nature_tests
+	./build/garden_tests
 
 web-test:
 	node web_serial_tests.mjs
@@ -49,3 +51,9 @@ clean:
 
 build/pokeball_tests: pokeball_tests.cpp ../pokeballs.cpp ../pokeballs.h ../dex.h | build
 	$(CXX) $(CXXFLAGS) pokeball_tests.cpp ../pokeballs.cpp -o $@
+
+build/nature_tests: nature_tests.cpp ../natures.cpp ../natures.h | build
+	$(CXX) $(CXXFLAGS) nature_tests.cpp ../natures.cpp -o $@
+
+build/garden_tests: garden_tests.cpp ../garden.cpp ../garden.h | build
+	$(CXX) $(CXXFLAGS) garden_tests.cpp ../garden.cpp -o $@

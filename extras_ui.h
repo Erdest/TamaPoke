@@ -5,6 +5,11 @@
 #ifdef TAMAPOKE_EXTRAS
 
 #include "extras.h"
+#include "quiz.h"
+#include "seasonal.h"
+#include <time.h>
+
+const char *battleTypeName(uint8_t type);
 
 // ---- strings (EN/ES/FR/DE/IT; PT falls back to EN) ----
 enum XStr : uint8_t {
@@ -98,6 +103,18 @@ static XTarget xNextTarget(uint8_t r) {
   if (e >= 0) { t = {true, TK_E4, (uint8_t)e, eliteFour(r, e).name, eliteFour(r, e).type}; return t; }
   if (!(g.region[r] & BIT_CHAMP)) { t = {true, TK_CHAMPION, 0, champion(r).name, champion(r).type}; return t; }
   return t;
+}
+
+// Seasonal events (Halloween / winter / Pokemon Day): doubled shiny odds.
+static uint16_t xShinyChance(uint16_t per4096) {
+  time_t t = (time_t)expeditionNowEpoch();
+  if (t < 86400L * 365L) return per4096;
+  struct tm tmv;
+  gmtime_r(&t, &tmv);
+  EventEffects e = eventsFor((uint8_t)(tmv.tm_mon + 1), (uint8_t)tmv.tm_mday, 0, 0);
+  if (!e.shinyDoubled) return per4096;
+  uint32_t v = (uint32_t)per4096 * 2u;
+  return (uint16_t)(v > 4096u ? 4096u : v);
 }
 
 // ---- trainer fights ----
@@ -517,13 +534,104 @@ static void xAccTap(int x, int y) {
   cardDirty = true;
 }
 
+
+// ---- page 14: type quiz ("which type is super effective?") ----
+static struct {
+  bool active; uint8_t round, correct, lastPick; int16_t dex; QuizQuestion q;
+} xQuiz = {};
+
+static void xQuizNext() {
+  uint16_t n = 0;
+  for (int i = 1; i <= DEX_COUNT; i++) xPool[n++] = (uint16_t)i;
+  for (uint8_t tries = 0; tries < 8; tries++) {
+    xQuiz.dex = (int16_t)xPool[random(n)];
+    const DexEntry &d = DEX_TBL[xQuiz.dex];
+    if (quizBuildType(d.type1, d.type2, quizChoices(QD_EASY), (uint32_t)esp_random(), xQuiz.q)) return;
+  }
+  xQuiz.active = false;
+}
+static void xQuizStart() {
+  xQuiz.active = true; xQuiz.round = 0; xQuiz.correct = 0; xQuiz.lastPick = 255;
+  xQuizNext();
+}
+static void renderCardQuiz() {
+  xHeader("QUIZ");
+  char buf[40];
+  if (!xQuiz.active) {
+    gfx->setTextSize(2);
+    gfx->setTextColor(UI_TRACK);
+    snprintf(buf, sizeof(buf), "%u", pet.extras.stat[AS_QUIZ_CORRECT]);
+    gfx->setCursor(CX - (int)strlen(buf) * 6, 120);
+    gfx->print(buf);
+    gfx->fillRoundRect(82, 190, 302, 60, 14, UI_BAR_OK);
+    gfx->setTextColor(UI_BG_DAY);
+    gfx->setTextSize(3);
+    gfx->setCursor(CX - 5 * 9, 208);
+    gfx->print("START");
+    xDrawMsg();
+    return;
+  }
+  const DexEntry &d = DEX_TBL[xQuiz.dex];
+  gfx->setTextSize(2);
+  gfx->setTextColor(UI_TRACK);
+  snprintf(buf, sizeof(buf), "%u/%u  OK %u", xQuiz.round + 1, QUIZ_ROUNDS, xQuiz.correct);
+  gfx->setCursor(CX - (int)strlen(buf) * 6, 74);
+  gfx->print(buf);
+  gfx->setTextSize(3);
+  gfx->setTextColor(UI_INK);
+  gfx->setCursor(CX - (int)strlen(dexName(xQuiz.dex)) * 9, 106);
+  gfx->print(dexName(xQuiz.dex));
+  gfx->setTextSize(2);
+  snprintf(buf, sizeof(buf), "%s%s%s", battleTypeName(d.type1), d.type2 ? "/" : "", d.type2 ? battleTypeName(d.type2) : "");
+  gfx->setTextColor(battleTypeColor(d.type1));
+  gfx->setCursor(CX - (int)strlen(buf) * 6, 142);
+  gfx->print(buf);
+  for (uint8_t i = 0; i < xQuiz.q.n; i++) {
+    int bx = 62 + (i % 2) * 176, by = 176 + (i / 2) * 72;
+    uint8_t t = (uint8_t)xQuiz.q.choices[i];
+    gfx->fillRoundRect(bx, by, 166, 60, 14, battleTypeColor(t));
+    gfx->setTextColor(UI_WHITE);
+    gfx->setTextSize(2);
+    const char *nm = battleTypeName(t);
+    gfx->setCursor(bx + (166 - (int)strlen(nm) * 12) / 2, by + 22);
+    gfx->print(nm);
+  }
+}
+static void xQuizTap(int x, int y) {
+  if (!xQuiz.active) {
+    if (y >= 190 && y <= 250) { xQuizStart(); cardDirty = true; sfxPlay(SFX_GAME_START); }
+    return;
+  }
+  for (uint8_t i = 0; i < xQuiz.q.n; i++) {
+    int bx = 62 + (i % 2) * 176, by = 176 + (i / 2) * 72;
+    if (x < bx || x > bx + 166 || y < by || y > by + 60) continue;
+    bool ok = i == xQuiz.q.correctIdx;
+    if (ok) { xQuiz.correct++; extrasBump(pet.extras, AS_QUIZ_CORRECT, 1); }
+    sfxPlay(ok ? SFX_MINIGAME_OK : SFX_MINIGAME_BAD);
+    if (++xQuiz.round >= QUIZ_ROUNDS) {
+      QuizReward r = quizSessionReward(xQuiz.correct, (uint8_t)random(100));
+      pet.joy = (uint8_t)min(100, (int)pet.joy + r.joy);
+      if (r.bond) pet.gainBond(r.bond);
+      if (r.seedDrop) gardenAddSeed(pet.extras.garden, (uint8_t)random(3), 1);
+      if (xQuiz.correct >= QUIZ_ROUNDS) extrasBump(pet.extras, AS_QUIZ_PERFECT, 1);
+      snprintf(xMsg, sizeof(xMsg), "%u/%u", xQuiz.correct, QUIZ_ROUNDS);
+      xQuiz.active = false;
+      pet.syncAchievements();
+      pet.commit();
+    } else xQuizNext();
+    cardDirty = true;
+    return;
+  }
+}
+
 // ---- dispatch ----
 void renderExtrasCard(uint8_t page) {
   if (page == 9) renderCardTrainer();
   else if (page == 10) renderCardGarden();
   else if (page == 11) renderCardBag();
   else if (page == 12) renderCardAch();
-  else renderCardAcc();
+  else if (page == 13) renderCardAcc();
+  else renderCardQuiz();
 }
 bool extrasCardTap(uint8_t page, int x, int y) {
   if (y >= 400) return false;   // let the caller close the card
@@ -531,6 +639,7 @@ bool extrasCardTap(uint8_t page, int x, int y) {
   else if (page == 10) xGardenTap(x, y);
   else if (page == 12) xAchTap(x, y);
   else if (page == 13) xAccTap(x, y);
+  else if (page == 14) xQuizTap(x, y);
   return true;
 }
 

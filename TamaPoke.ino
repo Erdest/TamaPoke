@@ -96,7 +96,7 @@ bool kbOpen = false;          // teclado para renombrar al bicho
 char nameBuf[12] = "";
 uint8_t nameLen = 0;
 #ifdef TAMAPOKE_EXTRAS
-#define CARD_COUNT 14
+#define CARD_COUNT 15
 #else
 #define CARD_COUNT 9
 #endif
@@ -2981,7 +2981,11 @@ void startBattleWith(int16_t forcedDex, uint8_t forcedLevel, int8_t forcedShiny)
     battleDex = pickWildSpecies(speciesRoll, currentDayPhase());
     battleLevel = wildLevelFor(pet.level(), levelRoll);
   }
+  #ifdef TAMAPOKE_EXTRAS
+  battleShiny = forcedShiny < 0 ? (random(4096) < xShinyChance(pet.stepShinyChancePer4096())) : forcedShiny != 0;
+#else
   battleShiny = forcedShiny < 0 ? (random(4096) < pet.stepShinyChancePer4096()) : forcedShiny != 0;
+#endif
   battlePlayer = petBattleStats();
   battleEnemy = wildBattleStats(battleDex, battleLevel);
   battleEnemy.hp = 0;

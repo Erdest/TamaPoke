@@ -27,6 +27,7 @@
 #include "time_utils.h"
 #include "dayphase.h"
 #include "imu.h"
+#include "natures.h"
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
@@ -4093,6 +4094,16 @@ void renderCardPersonality() {
   gfx->setTextSize(2);
   gfx->setCursor(CX - strlen(hint) * 6, 136);
   gfx->print(hint);
+#ifdef TAMAPOKE_NATURES
+  {
+    char nat[40];
+    snprintf(nat, sizeof(nat), "%s: %s", natureLabel((uint8_t)gLang), natureLocalName(pet.nature, (uint8_t)gLang));
+    gfx->setTextColor(UI_INK);
+    gfx->setTextSize(2);
+    gfx->setCursor(CX - strlen(nat) * 6, 162);
+    gfx->print(nat);
+  }
+#endif
 
   drawCardStat(182, T(S_VIN), pet.bond, 100, C565(0xd4, 0x52, 0x7e));
   drawCardStat(220, T(S_BAR_JOY), pet.joy, 100, UI_BAR_WARN);

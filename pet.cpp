@@ -1,7 +1,14 @@
+#include "natures.h"
 #include "pet.h"
 #include "dex.h"
 #include "audio.h"
 #include "dayphase.h"
+// drain helper: base rate adjusted by a nature modifier, never below zero
+static int adjustedDrain(int base, int mod) {
+  int v = base + mod;
+  return v < 0 ? 0 : v;
+}
+
 
 namespace {
 constexpr uint32_t BACKUP_MAGIC = 0x314B4254UL; // TBK1
@@ -182,7 +189,7 @@ void Pet::tick() {
   // cero, sin descuidos ni escapadas). despierto: comida -2/min, hig/joy -1/min.
   // El peso aun se quema; la racha de buen cuidado (goodTicks) queda en pausa.
   if (sleeping) {
-    energy = clamp100(energy + 6);
+    energy = clamp100(energy + natureSleepRecov(nature));
     if (weight > 0 && ageMinutes % 3 == 0) weight--;
     if (ageMinutes % 2 == 0) {                 // ~4x mas lento que despierto
       fullness = dropTo(fullness, 1, 30);
@@ -196,9 +203,9 @@ void Pet::tick() {
 
   if (ageMinutes % MINUTES_PER_LEVEL == 0) sfxPlay(SFX_LEVEL);  // subio de nivel (despierto)
 
-  fullness = clamp100(fullness - nightFoodDrop(lastSeenEpoch));
+  fullness = clamp100(fullness - adjustedDrain(nightFoodDrop(lastSeenEpoch), natureInfo(nature).foodDrainMod));
   energy = clamp100(energy - 1);
-  if (fullness > 40 && poops < 3 && random(100) < 15) poops++;
+  if (fullness > 40 && poops < 3 && random(100) < naturePoopChancePct(nature)) poops++;
 
   hygiene = clamp100(hygiene - 1 - 4 * poops);
   // el sobrepeso da pereza: la energia cae el doble
@@ -215,7 +222,7 @@ void Pet::tick() {
     goodTicks = 0;
   }
 
-  int dJoy = -1;
+  int dJoy = -adjustedDrain(1, natureInfo(nature).joyDrainMod);
   if (fullness < 30) dJoy -= 2;
   if (hygiene < 30) dJoy -= 2;
   joy = clamp100(joy + dJoy);
@@ -439,6 +446,9 @@ void Pet::registerCare() {
 
 void Pet::addBond(uint8_t amt) {
   if (bondToday >= 8) return;  // tope diario: el vinculo no se farmea
+  int8_t mod = natureBondPerTick(nature);
+  if (mod > 0) amt = (uint8_t)(amt + mod);                  // affectionate natures bond faster
+  else if (mod < 0 && random(2) == 0 && amt > 0) amt--;      // aloof natures lose half a point on average
   bond = clamp100(bond + amt);
   bondToday += amt;
 }
@@ -474,14 +484,20 @@ static uint16_t calcStat(uint8_t base, uint8_t gene, uint8_t lvl, uint8_t tr) {
   return (uint16_t)base * gene / 100 + lvl + tr;
 }
 
+// Nature: +10% / -10% on one stat pair (Hardy and neutral natures leave it untouched).
+static uint16_t natureStat(uint8_t nature, NatureStat which, uint16_t value) {
+  return natureApplyStat(nature, which, value);
+}
+
+
 uint16_t Pet::atkStat() const {
-  return isEgg() ? 0 : calcStat(DEX_TBL[speciesId].bAtk, geneAtk, level(), trAtk);
+  return isEgg() ? 0 : natureStat(nature, NSTAT_ATK, calcStat(DEX_TBL[speciesId].bAtk, geneAtk, level(), trAtk));
 }
 uint16_t Pet::defStat() const {
-  return isEgg() ? 0 : calcStat(DEX_TBL[speciesId].bDef, geneDef, level(), trDef);
+  return isEgg() ? 0 : natureStat(nature, NSTAT_DEF, calcStat(DEX_TBL[speciesId].bDef, geneDef, level(), trDef));
 }
 uint16_t Pet::speStat() const {
-  return isEgg() ? 0 : calcStat(DEX_TBL[speciesId].bSpe, geneSpe, level(), trSpe);
+  return isEgg() ? 0 : natureStat(nature, NSTAT_SPE, calcStat(DEX_TBL[speciesId].bSpe, geneSpe, level(), trSpe));
 }
 
 uint16_t Pet::registeredCount() const {
@@ -676,6 +692,11 @@ void Pet::hatch() {
   geneAtk = 90 + random(21);
   geneDef = 90 + random(21);
   geneSpe = 90 + random(21);
+#ifdef TAMAPOKE_NATURES
+  nature = natureFromRoll(random(NATURE_COUNT));
+#else
+  nature = 0;
+#endif
   trAtk = trDef = trSpe = 0;
   berryKnown = false;
   bond = 0;          // vinculo, medallas y nombre son del individuo
@@ -850,6 +871,10 @@ void Pet::feedBerry(uint8_t color) {
     addBond(2);
   } else {
     fullness = clamp100(fullness + 25);
+    if (natureLikesBerry(nature, color)) {   // matches the nature's taste
+      fullness = clamp100(fullness + 5);
+      joy = clamp100(joy + 3);
+    }
   }
   eatUntil = millis() + EAT_ANIM_MS;
   registerCare();
@@ -1466,6 +1491,7 @@ void Pet::save() {
   prefs.putUChar("tatk", trAtk);
   prefs.putUChar("tdef", trDef);
   prefs.putUChar("tspe", trSpe);
+  prefs.putUChar("nat", nature);
   prefs.putBool("bk", berryKnown);
   prefs.putBool("shy", shiny);
   prefs.putBool("eshy", eggShiny);
@@ -1551,6 +1577,8 @@ void Pet::load() {
   trAtk = prefs.getUChar("tatk", 0);
   trDef = prefs.getUChar("tdef", 0);
   trSpe = prefs.getUChar("tspe", 0);
+  nature = prefs.getUChar("nat", 0);   // absent in older saves -> Hardy (neutral)
+  if (nature >= NATURE_COUNT) nature = 0;
   berryKnown = prefs.getBool("bk", false);
   shiny = prefs.getBool("shy", false);
   eggShiny = prefs.getBool("eshy", false);

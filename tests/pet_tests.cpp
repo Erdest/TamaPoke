@@ -1089,8 +1089,94 @@ static void testSaveBackupRoundTripAndValidation() {
   EXPECT_TRUE(!restored.importBackup(blob, size));
 }
 
+
+// ---- Natures (feature list section 30) ----
+static void testNatureScalesBattleStats() {
+  Pet neutral = hatchedPet(4);
+  neutral.ageMinutes = 15 * MINUTES_PER_LEVEL;
+  Pet adamant = neutral;      // Adamant: +10% ATK
+  adamant.nature = 3;
+  Pet bold = neutral;         // Bold: +10% DEF, -10% ATK
+  bold.nature = 5;
+  EXPECT_EQ(adamant.atkStat(), neutral.atkStat() * 110 / 100);
+  EXPECT_EQ(adamant.defStat(), neutral.defStat());
+  EXPECT_EQ(bold.atkStat(), neutral.atkStat() * 90 / 100);
+  EXPECT_EQ(bold.defStat(), neutral.defStat() * 110 / 100);
+  EXPECT_EQ(neutral.nature, 0);  // Hardy: untouched
+}
+
+static void testNatureChangesAwakeDrainRates() {
+  Pet hardy = hatchedPet(4);
+  hardy.fullness = 80; hardy.joy = 80; hardy.sleeping = false; hardy.lastSeenEpoch = kNoonEpoch;
+  Pet brave = hardy;          // Brave: food +1
+  brave.nature = 2;
+  Pet jolly = hardy;          // Jolly: joy -2 -> never loses joy
+  jolly.nature = 13;
+  Pet calm = hardy;           // Calm: food -1, joy -1
+  calm.nature = 20;
+  gMockMillis = 0; EXPECT_TRUE(hardy.update(PET_TICK_MS));
+  gMockMillis = 0; EXPECT_TRUE(brave.update(PET_TICK_MS));
+  gMockMillis = 0; EXPECT_TRUE(jolly.update(PET_TICK_MS));
+  gMockMillis = 0; EXPECT_TRUE(calm.update(PET_TICK_MS));
+  EXPECT_EQ(hardy.fullness, 78);
+  EXPECT_EQ(brave.fullness, 77);
+  EXPECT_EQ(calm.fullness, 79);
+  EXPECT_EQ(hardy.joy, 79);
+  EXPECT_EQ(jolly.joy, 80);
+  EXPECT_EQ(calm.joy, 80);
+  gMockMillis = 0;
+}
+
+static void testNatureChangesSleepRecovery() {
+  Pet hardy = hatchedPet(4);
+  hardy.energy = 40; hardy.sleeping = true; hardy.lastSeenEpoch = kNoonEpoch;
+  Pet quiet = hardy;          // Quiet: +3
+  quiet.nature = 17;
+  Pet hasty = hardy;          // Hasty: -1
+  hasty.nature = 11;
+  gMockMillis = 0; EXPECT_TRUE(hardy.update(PET_TICK_MS));
+  gMockMillis = 0; EXPECT_TRUE(quiet.update(PET_TICK_MS));
+  gMockMillis = 0; EXPECT_TRUE(hasty.update(PET_TICK_MS));
+  EXPECT_EQ(hardy.energy, 46);
+  EXPECT_EQ(quiet.energy, 49);
+  EXPECT_EQ(hasty.energy, 45);
+  gMockMillis = 0;
+}
+
+static void testNatureBerryTasteGivesBonus() {
+  Pet hardy = hatchedPet(4);              // species 4 loves blue (4 % 3 == 1), red is not its favourite
+  hardy.fullness = 40; hardy.joy = 40; hardy.sleeping = false;
+  Pet lonely = hardy;                     // Lonely likes red berries
+  lonely.nature = 1;
+  EXPECT_TRUE(!hardy.lovesBerry(0));
+  hardy.feedBerry(0);
+  lonely.feedBerry(0);
+  EXPECT_EQ(hardy.fullness, 65);
+  EXPECT_EQ(lonely.fullness, 70);
+  EXPECT_EQ(lonely.joy, hardy.joy + 3);
+}
+
+static void testNatureSurvivesSaveAndLoad() {
+  Pet pet;
+  pet.begin();                     // first boot writes the "init" flag into this pet's storage
+  pet.chooseStarter(4);
+  pet.eggTap(); pet.eggTap(); pet.eggTap();
+  pet.nature = 21;
+  pet.sleeping = false;
+  pet.feedCandy();                 // any care action persists the pet
+  Pet loaded = pet;                // the copy carries the saved storage
+  loaded.nature = 0;
+  loaded.begin();                  // reload from storage
+  EXPECT_EQ(loaded.nature, 21);
+}
+
 int main() {
   testEggHatchesChosenStarter();
+  testNatureScalesBattleStats();
+  testNatureChangesAwakeDrainRates();
+  testNatureChangesSleepRecovery();
+  testNatureBerryTasteGivesBonus();
+  testNatureSurvivesSaveAndLoad();
   testBattleStatsUseBaseGenesLevelAndTraining();
   testEvolutionRequiresLevelAndHealthyStats();
   testEvolveOfferStaysWhenStatsDipAndReoffersAtCap();

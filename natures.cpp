@@ -51,3 +51,21 @@ bool natureLikesBerry(uint8_t n, uint8_t flavor) {
   NatureBerry p = natureInfo(n).berryPref;
   return p != NBERRY_NONE && (uint8_t)p == flavor + 1;
 }
+
+static const char *const LOCAL_NAMES[6][NATURE_COUNT] = {
+  // ES
+  { "FUERTE", "HURANA", "AUDAZ", "FIRME", "PICARA", "OSADA", "DOCIL", "PLACIDA", "AGITADA", "FLOJA", "MIEDOSA", "ACTIVA", "SERIA", "ALEGRE", "INGENUA", "MODESTA", "AFABLE", "MANSA", "TIMIDA", "FURIOSA", "SERENA", "AMABLE", "GROSERA", "CAUTA", "RARA" },
+  // EN
+  { "HARDY", "LONELY", "BRAVE", "ADAMANT", "NAUGHTY", "BOLD", "DOCILE", "RELAXED", "IMPISH", "LAX", "TIMID", "HASTY", "SERIOUS", "JOLLY", "NAIVE", "MODEST", "MILD", "QUIET", "BASHFUL", "RASH", "CALM", "GENTLE", "SASSY", "CAREFUL", "QUIRKY" },
+  // FR
+  { "HARDI", "SOLO", "BRAVE", "RIGIDE", "MAUVAIS", "ASSURE", "DOCILE", "RELAX", "MALIN", "LACHE", "TIMIDE", "PRESSE", "SERIEUX", "JOVIAL", "NAIF", "MODESTE", "DOUX", "DISCRET", "PUDIQUE", "FOUFOU", "CALME", "GENTIL", "MALPOLI", "PRUDENT", "BIZARRE" },
+  // DE
+  { "ROBUST", "SOLO", "MUTIG", "HART", "FRECH", "KUHN", "SANFT", "LOCKER", "PFIFFIG", "LASCH", "SCHEU", "HASTIG", "ERNST", "FROH", "NAIV", "MASSIG", "MILD", "RUHIG", "ZAGHAFT", "HITZIG", "STILL", "ZART", "FORSCH", "SACHT", "KAUZIG" },
+  // IT
+  { "ARDITA", "SCHIVA", "AUDACE", "DECISA", "BIRBONA", "SICURA", "DOCILE", "PLACIDA", "SCALTRA", "FIACCA", "TIMIDA", "LESTA", "SERIA", "ALLEGRA", "INGENUA", "MODESTA", "MITE", "QUIETA", "RITROSA", "ARDENTE", "CALMA", "GENTILE", "VIVACE", "CAUTA", "FURBA" },
+  // PT (no verified translation: falls back to EN)
+  { "HARDY", "LONELY", "BRAVE", "ADAMANT", "NAUGHTY", "BOLD", "DOCILE", "RELAXED", "IMPISH", "LAX", "TIMID", "HASTY", "SERIOUS", "JOLLY", "NAIVE", "MODEST", "MILD", "QUIET", "BASHFUL", "RASH", "CALM", "GENTLE", "SASSY", "CAREFUL", "QUIRKY" },
+};
+const char *natureLocalName(uint8_t n, uint8_t lang) { return LOCAL_NAMES[lang < 6 ? lang : 1][n < NATURE_COUNT ? n : 0]; }
+static const char *const LABELS[6] = {"NATURALEZA", "NATURE", "NATURE", "WESEN", "NATURA", "NATURE"};
+const char *natureLabel(uint8_t lang) { return LABELS[lang < 6 ? lang : 1]; }

@@ -24,3 +24,7 @@ uint8_t naturePoopChancePct(uint8_t nature);            // min 1
 uint8_t natureSleepRecov(uint8_t nature);               // ENE per minute
 int8_t natureBondPerTick(uint8_t nature);
 bool natureLikesBerry(uint8_t nature, uint8_t berryFlavor);  // 0 red,1 blue,2 green
+
+// Localized names in repo Lang order: ES, EN, FR, DE, IT, PT (ASCII only; PT falls back to EN).
+const char *natureLocalName(uint8_t nature, uint8_t lang);
+const char *natureLabel(uint8_t lang);   // "Nature" heading

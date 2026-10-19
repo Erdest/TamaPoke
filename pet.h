@@ -114,6 +114,7 @@ public:
   // genes (90-110%, se tiran al eclosionar) y entrenamiento (0-100)
   uint8_t geneAtk = 100, geneDef = 100, geneSpe = 100;
   uint8_t trAtk = 0, trDef = 0, trSpe = 0;
+  uint8_t nature = 0;       // 0..24 (0 = Hardy, neutral). Assigned at hatch when TAMAPOKE_NATURES is set.
   bool berryKnown = false;  // ya descubrio su baya favorita
   bool shiny = false;       // variante de color rara (se sortea en el huevo)
   uint32_t ageMinutes = 0;

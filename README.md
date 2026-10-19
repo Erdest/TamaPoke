@@ -66,6 +66,13 @@ the cadence filter confirms real rhythmic steps. Single bumps are rejected.
 - Walking slowly raises JOY and BOND within daily/hourly caps
 - Daily and lifetime steps improve wild Shiny odds and catching slightly
 
+## Gen 9 feature preview (testing)
+
+`web/gen9.html` is a separate installer page for the 1.37.0 preview builds (natures, Poké Balls, moves, gyms,
+berry garden, achievements, 1025-species option). They are untested on hardware; see
+[docs/GEN9_STATUS.md](docs/GEN9_STATUS.md) for flags, limits and the test checklist, and open an issue with the
+device-test template for anything that fails. Serve the `web/` folder over HTTPS or localhost for the browser flasher.
+
 ## Full feature list (Gen 9)
 
 [FEATURES.md](FEATURES.md) documents the complete Gen 9 firmware feature set

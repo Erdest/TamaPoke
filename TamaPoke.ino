@@ -50,6 +50,10 @@ void xDrawToast();
 #endif
 #ifdef TAMAPOKE_LOCAL_TEST
 #define FW_VERSION "1.36.0-gen3-local"
+#elif defined(TAMAPOKE_GEN3_RELEASE) && defined(TAMAPOKE_GEN9_DEX)
+#define FW_VERSION "1.37.0-gen9-1025-preview"
+#elif defined(TAMAPOKE_GEN3_RELEASE) && defined(TAMAPOKE_EXTRAS)
+#define FW_VERSION "1.37.0-gen9-preview"
 #elif defined(TAMAPOKE_GEN3_RELEASE)
 #define FW_VERSION "1.36.1"
 #else

@@ -1,26 +1,84 @@
-# TamaPoke
+# TamaPoke Gen 9 (Erdest fork)
 
-[![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://shadowenemyx.github.io/TamaPoke/web/)
-[![MakerWorld](https://img.shields.io/badge/MakerWorld-3D%20case-00AE42?logo=bambulab&logoColor=white)](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)
-![Board](https://img.shields.io/badge/board-ESP32--S3%20round%20AMOLED-E7352C?logo=espressif&logoColor=white)
 ![Firmware](https://img.shields.io/badge/firmware-v1.37.0--gen9--preview-4F93C4)
-![Pokédex](https://img.shields.io/badge/Pok%C3%A9mon-386-E8503A)
-![Languages](https://img.shields.io/badge/languages-6-FFCB05)
+![Board](https://img.shields.io/badge/board-ESP32--S3%20round%20AMOLED-E7352C?logo=espressif&logoColor=white)
+![Pokédex](https://img.shields.io/badge/Pok%C3%A9mon-386%20%7C%201025%20(opt.)-E8503A)
+![Status](https://img.shields.io/badge/status-preview%20%2F%20untested%20on%20hardware-orange)
+[![License](https://img.shields.io/badge/code-MIT-green)](LICENSE)
 
-TamaPoke is a Pokémon-inspired virtual pet for the
-**Waveshare ESP32-S3-Touch-AMOLED-1.75**. This is ShadowEnemyx's expanded fork.
+A Pokémon-inspired virtual pet for the **Waveshare ESP32-S3-Touch-AMOLED-1.75**, with extra
+gameplay layered on top of the existing TamaPoke firmware.
 
-> **Gen 9 preview fork.** This repository adds an untested preview on top of ShadowEnemyx's TamaPoke
-> (natures, Poké Balls, moves, gyms, berry garden, achievements, optional 1025-species build).
-> Preview installer: **[web/gen9.html](https://erdest.github.io/TamaPoke/web/gen9.html)**
-> (works once GitHub Pages is enabled for this repository; otherwise serve the `web/` folder locally over
-> HTTPS or localhost). Checklist and limits: [docs/GEN9_STATUS.md](docs/GEN9_STATUS.md).
-> The stable installer below is ShadowEnemyx's and does **not** contain these changes.
+> **This is a fork.** All the groundwork (hardware support, pet simulation, Gen 1–3 dex, battles,
+> minigames, installer) was made by others. See [Lineage](#lineage-and-credits) below. This fork only
+> adds the features listed in the next section and does not replace or speak for the original projects.
 
-> Use only the ShadowEnemyx installer linked here for the stable version. The upstream project is
-> credited as the original source, but its installer contains a different build.
+## What this fork adds
 
-## Install the current public version (stable, upstream fork)
+Everything below is new relative to [ShadowEnemyx/TamaPoke](https://github.com/ShadowEnemyx/TamaPoke)
+v1.36.1, and every feature sits behind a build flag that is **off by default**, so a default build behaves
+like the upstream firmware.
+
+| Feature | Build flag |
+|---|---|
+| Natures (stat modifiers, saved per pet) | `TAMAPOKE_NATURES` |
+| Poké Balls with different catch modifiers and an inventory | `TAMAPOKE_BALLS` |
+| Move-based battle engine (4 moves, types, PP, status) | `TAMAPOKE_MOVES` |
+| Gym and Elite Four style trainer runs, daily rematches | `TAMAPOKE_EXTRAS` |
+| Berry garden, achievements, accessories, quiz, daily challenge/seed | `TAMAPOKE_EXTRAS` |
+| Optional Gen 1–9 dex: 1,025 species, evolution rules, names in 6 languages | `TAMAPOKE_GEN9_DEX` |
+| Dex goals/chirps/backup format adapted to the larger dex | `TAMAPOKE_GEN9_DEX` |
+| Host-side unit tests for the new logic (`tests/`) | n/a |
+| Tools: `pack_static.py`, `gen_dex_gen9.py`, `make_thumbs.py --max`, `pack_bundle.py --gen9` | n/a |
+
+Planned but **not yet wired in**: Mega/Dynamax/Tera, regional forms, trade evolutions, Wonder Trade/PvP,
+party/box, photo mode, BLE notifications, watch face. Details, limits and a 10-point device test checklist
+are in [docs/GEN9_STATUS.md](docs/GEN9_STATUS.md). The long-term target list is [FEATURES.md](FEATURES.md).
+
+## Status: preview, please test
+
+None of this has been validated on real hardware yet. Unit tests pass on the host and the firmware builds
+(about 25% of flash with every flag on), but treat it as a preview.
+
+- Back up your save first, and leave **Erase device unchecked** when flashing.
+- The preview reuses the unmodified 1.36.1 bootloader and partition table, so a failed app flash can be
+  recovered by re-flashing over USB.
+- Found a problem? Open an issue with the **device test** template.
+
+## Install the preview
+
+Browser flashing needs desktop **Chrome or Edge** over HTTPS or localhost.
+
+- Hosted (needs GitHub Pages enabled on this repository): `web/gen9.html`
+- Local: serve the `web/` folder, e.g. `python3 -m http.server 8000 --directory web`, then open
+  `http://localhost:8000/gen9.html`.
+
+Two builds are offered: `1.37.0-gen9-preview` (386 species, new features) and
+`1.37.0-gen9-1025-preview` (1,025 species). Sprites are **not** included in this repository; see
+[Sprite pipeline](#sprite-pipeline) and [CREDITS.md](CREDITS.md).
+
+For the unmodified stable release use the original installer:
+**[ShadowEnemyx web installer](https://shadowenemyx.github.io/TamaPoke/web/)** (firmware 1.36.1, 386 Pokémon).
+
+## Lineage and credits
+
+| Layer | Author | Link |
+|---|---|---|
+| Original TamaPoke | Quique Tortosa (socquique) | [socquique/TamaPoke](https://github.com/socquique/TamaPoke) |
+| Expanded Gen 3 fork, installer, 3D case remix | ShadowEnemyx | [ShadowEnemyx/TamaPoke](https://github.com/ShadowEnemyx/TamaPoke) |
+| Gen 9 feature work (this repo) | Erdest | [Erdest/TamaPoke](https://github.com/Erdest/TamaPoke) |
+
+Full attribution (sprites, data, hardware) is in the [Credits and license](#credits-and-license) section and
+[CREDITS.md](CREDITS.md).
+
+---
+
+# Upstream TamaPoke documentation
+
+The rest of this file is the upstream documentation (kept because it still describes the base firmware,
+controls, hardware and build flow). Where it says "fork" it refers to ShadowEnemyx's version.
+
+## Stable install (upstream, ShadowEnemyx)
 
 ### [Open the ShadowEnemyx web installer](https://shadowenemyx.github.io/TamaPoke/web/)
 
@@ -73,12 +131,9 @@ the cadence filter confirms real rhythmic steps. Single bumps are rejected.
 - Walking slowly raises JOY and BOND within daily/hourly caps
 - Daily and lifetime steps improve wild Shiny odds and catching slightly
 
-## Gen 9 feature preview (testing)
+## Gen 9 preview
 
-`web/gen9.html` is a separate installer page for the 1.37.0 preview builds (natures, Poké Balls, moves, gyms,
-berry garden, achievements, 1025-species option). They are untested on hardware; see
-[docs/GEN9_STATUS.md](docs/GEN9_STATUS.md) for flags, limits and the test checklist, and open an issue with the
-device-test template for anything that fails. Serve the `web/` folder over HTTPS or localhost for the browser flasher.
+See [What this fork adds](#what-this-fork-adds) at the top and [docs/GEN9_STATUS.md](docs/GEN9_STATUS.md).
 
 ## Full feature list (Gen 9)
 
@@ -183,10 +238,11 @@ the extended release checklist is tracked in `AI_HANDOFF.md`.
 This is a personal, non-commercial fan project and is not affiliated with or
 endorsed by Nintendo, Game Freak or The Pokémon Company.
 
-- Original project: [socquique/TamaPoke](https://github.com/socquique/TamaPoke)
+- Original project: [socquique/TamaPoke](https://github.com/socquique/TamaPoke) (MIT, © 2026 Quique Tortosa)
 - Expanded fork and installer: [ShadowEnemyx/TamaPoke](https://github.com/ShadowEnemyx/TamaPoke)
+- Gen 9 features (this repository): [Erdest](https://github.com/Erdest)
 - Animated pixel art: [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab), CC BY-NC 4.0
 - 3D Pokéball case/remix: [MakerWorld](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi), CC BY-NC-SA
-- Source code: [MIT](LICENSE)
+- Source code: [MIT](LICENSE). The original copyright notice is retained as required.
 
 See [CREDITS.md](CREDITS.md) for complete attribution.

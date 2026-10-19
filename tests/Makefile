@@ -6,7 +6,7 @@ BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
 
-test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests web-test
+test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests build/dex9_tests web-test
 	./build/pet_tests
 	./build/battle_tests
 	./build/pokeball_tests
@@ -18,6 +18,7 @@ test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests
 	./build/progress_tests
 	./build/content_tests
 	./build/system_tests
+	./build/dex9_tests
 
 web-test:
 	node web_serial_tests.mjs
@@ -83,3 +84,6 @@ build/content_tests: content_tests.cpp ../achievements.cpp ../accessories.cpp ..
 SYS_SRC = ../party.cpp ../moves.cpp ../battle.cpp ../photo.cpp ../blenotify.cpp ../watchface.cpp
 build/system_tests: system_tests.cpp $(SYS_SRC) | build
 	$(CXX) $(CXXFLAGS) system_tests.cpp $(SYS_SRC) -o $@
+
+build/dex9_tests: dex9_tests.cpp ../dexall.h ../dex_gen9.h ../gyms.cpp ../dex.h | build
+	$(CXX) $(CXXFLAGS) dex9_tests.cpp ../gyms.cpp -o $@

@@ -28,6 +28,10 @@
 #include "dayphase.h"
 #include "imu.h"
 #include "natures.h"
+#ifdef TAMAPOKE_MOVES
+#include "movebattle.h"
+void mvAutoLearn();
+#endif
 #ifdef TAMAPOKE_EXTRAS
 #include "extras.h"
 void extrasLoop(uint32_t now);
@@ -217,6 +221,104 @@ void maybeOfferMorning(uint32_t now);
 uint32_t pmdActTotalMs(const PmdAct &a);
 bool watermarkNeedsRedraw();
 void flushStampedFrame();
+#ifdef TAMAPOKE_MOVES
+MoveCombatant mvP, mvE;
+bool mvActive = false;
+static uint32_t mvRoll(uint32_t m) { return (uint32_t)random((long)m); }
+static bool mvHasMoves() {
+  for (uint8_t i = 0; i < MOVESET_SIZE; i++)
+    if (pet.moves.slot[i].id != MOVE_NONE) return true;
+  return false;
+}
+// Fill an empty moveset (old saves, eggs hatched before the flag) from the species types.
+static void mvEnsurePetMoves() {
+  if (mvHasMoves() || pet.speciesId < 1 || pet.speciesId > DEX_COUNT) return;
+  hatchMoves(pet.moves, DEX_TBL[pet.speciesId].type1, DEX_TBL[pet.speciesId].type2, pet.level());
+  pet.commit();
+}
+static void mvBeginBattle() {
+  mvEnsurePetMoves();
+  moveCombatantInit(mvP, battleRun.player, pet.moves);
+  MoveSet em;
+  hatchMoves(em, battleRun.enemy.type1, battleRun.enemy.type2, battleRun.enemy.level);
+  moveCombatantInit(mvE, battleRun.enemy, em);
+  mvP.hp = battleRun.playerHp; mvP.maxHp = battleRun.playerMaxHp;
+  mvE.hp = battleRun.enemyHp; mvE.maxHp = battleRun.enemyMaxHp;
+  mvActive = true;
+}
+static void mvEndBattle(bool won) {
+  if (!mvActive) return;
+  mvActive = false;
+  pet.moves = mvP.moves;
+  if (won) movesetRestoreAfterWin(pet.moves);
+  pet.commit();
+}
+static void mvPerformMove(uint8_t slot) {
+  if (battleResolved || !mvActive) return;
+  if (slot >= MOVESET_SIZE || mvP.moves.slot[slot].id == MOVE_NONE || mvP.moves.slot[slot].pp == 0) {
+    sfxPlay(SFX_DENY);
+    return;
+  }
+  battleAttackMenuUntil = 0;
+  mvP.hp = battleRun.playerHp; mvE.hp = battleRun.enemyHp;
+  uint8_t usedId = mvP.moves.slot[slot].id;
+  MoveTurnReport r = stepMoveTurn(mvP, mvE, slot, 60, mvRoll);
+  battleRun.playerHp = mvP.hp;
+  battleRun.enemyHp = mvE.hp;
+  battleRun.round++;
+  battleTurn = {};
+  battleTurn.playerDamage = r.a[0].damage;
+  battleTurn.enemyDamage = (uint16_t)(r.a[1].damage + r.dot[0]);
+  battleTurn.playerTypePct = r.a[0].typePct;
+  battleTurn.enemyTypePct = r.a[1].typePct;
+  battleTurn.playerDodged = r.a[1].missed;
+  battleTurn.enemyDodged = r.a[0].missed;
+  battleTurn.battleEnded = mvP.hp == 0 || mvE.hp == 0;
+  battleTurn.playerWon = mvE.hp == 0 && mvP.hp > 0;
+  const char *nm = moveDef(usedId).name;
+  if (r.a[0].blocked) snprintf(battleMsg, sizeof(battleMsg), "%.14s", r.a[0].selfHit ? "Confused" : "Can't move");
+  else if (r.a[0].missed) snprintf(battleMsg, sizeof(battleMsg), "%.10s missed", nm);
+  else if (r.a[0].damage > 0)
+    snprintf(battleMsg, sizeof(battleMsg), "%.9s %u%s", nm, r.a[0].damage, r.a[0].crit ? "!" : "");
+  else snprintf(battleMsg, sizeof(battleMsg), "%.14s", nm);
+  if (battleTurn.battleEnded) {
+    mvEndBattle(battleTurn.playerWon);
+    finishBattle();
+    return;
+  }
+  if (!battleLowHpWarned && battleRun.playerHp > 0 && battleRun.playerHp <= battleRun.playerMaxHp * 3 / 10) {
+    battleLowHpWarned = true;
+    sfxPlay(SFX_LOW_HP);
+  }
+  if (r.a[0].damage > 0 && r.a[0].typePct > 100) sfxPlay(SFX_EFFECTIVE);
+  else if (r.a[0].damage > 0 && r.a[0].typePct < 100) sfxPlay(SFX_WEAK_HIT);
+  else if (r.a[0].damage > 0) sfxPlay(SFX_PLAY);
+  else if (battleTurn.enemyDamage > 0) sfxPlay(SFX_ENEMY_HIT);
+  else sfxPlay(SFX_TAP);
+}
+// New move every 5 levels. The roll is derived from species and level so the same
+// offer repeats (and is ignored once known): no extra state needs saving.
+void mvAutoLearn() {
+  if (pet.isEgg() || pet.speciesId < 1 || pet.speciesId > DEX_COUNT || !mvHasMoves()) return;
+  uint8_t lv = pet.level();
+  if (lv % 5 != 0) return;
+  const DexEntry &d = DEX_TBL[pet.speciesId];
+  uint8_t id = learnOfferFor(lv, d.type1, d.type2, (uint8_t)((pet.speciesId * 7 + lv) % 100));
+  if (id == MOVE_NONE) return;
+  int8_t r = movesetAdd(pet.moves, id);
+  if (r == -2) {   // full: replace the weakest only if the new move is stronger
+    uint8_t weakest = 0;
+    for (uint8_t i = 1; i < MOVESET_SIZE; i++)
+      if (moveDef(pet.moves.slot[i].id).power < moveDef(pet.moves.slot[weakest].id).power) weakest = i;
+    if (moveDef(id).power > moveDef(pet.moves.slot[weakest].id).power) {
+      movesetReplace(pet.moves, weakest, id);
+      r = (int8_t)weakest;
+    }
+  }
+  if (r >= 0) pet.commit();
+}
+#endif
+
 void startBattleWith(int16_t forcedDex, uint8_t forcedLevel, int8_t forcedShiny = -1);
 void startBattle();
 
@@ -523,6 +625,15 @@ void loop() {
   uint32_t now = millis();
   uint32_t loopStart = now;
   bool petChanged = pet.update(now);
+#ifdef TAMAPOKE_MOVES
+  {
+    static uint32_t nextLearn = 0;
+    if ((int32_t)(now - nextLearn) >= 0) {
+      nextLearn = now + 60000UL;
+      mvAutoLearn();
+    }
+  }
+#endif
 #ifdef TAMAPOKE_EXTRAS
   extrasLoop(now);
 #endif
@@ -2951,6 +3062,9 @@ void maybeOfferMorning(uint32_t now) {
 }
 
 void closeBattle() {
+#ifdef TAMAPOKE_MOVES
+  mvEndBattle(false);
+#endif
 #ifdef TAMAPOKE_EXTRAS
   xAbortRun();
 #endif
@@ -2991,6 +3105,9 @@ void startBattleWith(int16_t forcedDex, uint8_t forcedLevel, int8_t forcedShiny)
   battleEnemy.hp = 0;
   battleResult = {};
   battleRun = beginBattleRuntime(battlePlayer, battleEnemy);
+#ifdef TAMAPOKE_MOVES
+  mvBeginBattle();
+#endif
   battleTurn = {};
   battleReward = {};
   battleMsg[0] = 0;
@@ -3068,6 +3185,9 @@ void performBattleAction(BattleAction action) {
     snprintf(battleMsg, sizeof(battleMsg), T(S_MISSED));
   }
   if (battleTurn.battleEnded) {
+#ifdef TAMAPOKE_MOVES
+    mvEndBattle(battleTurn.playerWon);
+#endif
     finishBattle();
     return;
   }
@@ -3134,6 +3254,21 @@ void battleTap(int16_t x, int16_t y) {
     return;
   }
   if (battleAttackMenuUntil) {
+#ifdef TAMAPOKE_MOVES
+    if (mvActive) {
+      for (uint8_t i = 0; i < MOVESET_SIZE; i++) {
+        int bx = 58 + (i % 2) * 180, by = 252 + (i / 2) * 50;
+        if (x >= bx && x <= bx + 170 && y >= by && y <= by + 44) {
+          mvPerformMove(i);
+          return;
+        }
+      }
+      battleAttackMenuUntil = 0;
+      battleDirty = true;
+      sfxPlay(SFX_TAP);
+      return;
+    }
+#endif
     if (x >= 66 && x <= 232 && y >= 292 && y <= 352) {
       performBattleAction(BATTLE_ATTACK_QUICK);
       return;
@@ -3473,6 +3608,25 @@ void renderBattle() {
       }
     }
 
+#ifdef TAMAPOKE_MOVES
+    if (battleAttackMenuUntil && mvActive) {
+      for (uint8_t i = 0; i < MOVESET_SIZE; i++) {
+        int bx = 58 + (i % 2) * 180, by = 252 + (i / 2) * 50;
+        if (mvP.moves.slot[i].id == MOVE_NONE) continue;
+        const MoveDef &md = moveDef(mvP.moves.slot[i].id);
+        bool usable = mvP.moves.slot[i].pp > 0;
+        gfx->fillRoundRect(bx, by, 170, 44, 12, usable ? battleTypeColor(md.type) : UI_TRACK);
+        gfx->setTextColor(UI_WHITE);
+        gfx->setTextSize(1);
+        gfx->setCursor(bx + 8, by + 9);
+        gfx->print(md.name);
+        char pw[16];
+        snprintf(pw, sizeof(pw), "P%u PP%u", md.power, mvP.moves.slot[i].pp);
+        gfx->setCursor(bx + 8, by + 26);
+        gfx->print(pw);
+      }
+    } else
+#endif
     if (battleAttackMenuUntil) {
       gfx->fillRoundRect(74, 298, 150, 46, 12, UI_BAR_BAD);
       gfx->fillRoundRect(242, 298, 150, 46, 12, UI_BAR_WARN);

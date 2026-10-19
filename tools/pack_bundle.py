@@ -27,17 +27,57 @@ GEN3_FULL_OUT = os.path.join(HERE, '..', 'web', 'sprites-gen3-full.pak')
 PUBLIC_THUMBS = os.path.join(MONS, 'thumbs-public.bin')
 
 
+def pack_gen9(args):
+    """Gen 4-9 (#387-1025) split into TPAK parts under GitHub's 100 MB limit.
+    thumbs.bin (built with make_thumbs.py --max 1025) goes in the first part."""
+    limit = 90 * 1048576
+    files = []
+    for n in range(387, 1026):
+        for pre in ('p', 'ps'):
+            f = os.path.join(MONS, f'{pre}{n:03d}.bin')
+            if os.path.exists(f):
+                files.append(f)
+    thumbs = os.path.join(MONS, 'thumbs.bin')
+    parts, cur, size = [], [thumbs] if os.path.exists(thumbs) else [], 0
+    for f in files:
+        sz = os.path.getsize(f)
+        if size + sz > limit:
+            parts.append(cur)
+            cur, size = [], 0
+        cur.append(f)
+        size += sz
+    if cur:
+        parts.append(cur)
+    if not files:
+        raise SystemExit('no gen4-9 sprites in ' + MONS)
+    for i, part in enumerate(parts, 1):
+        out_path = os.path.join(HERE, '..', 'web', f'sprites-gen9-part{i}.pak')
+        with open(out_path, 'wb') as o:
+            o.write(b'TPAK')
+            o.write(struct.pack('<H', len(part)))
+            blobs = [open(f, 'rb').read() for f in part]
+            for f, b in zip(part, blobs):
+                nb = ('mons/' + os.path.basename(f)).encode()
+                o.write(struct.pack('<B', len(nb)) + nb + struct.pack('<I', len(b)))
+            for b in blobs:
+                o.write(b)
+        print(f'{os.path.normpath(out_path)}: {len(part)} files, {os.path.getsize(out_path) / 1048576:.1f} MB')
+
+
 def main():
     args = sys.argv[1:]
     gen2_only = '--gen2' in args
     gen3_only = '--gen3' in args
     gen3_full = '--gen3-full' in args
+    gen9 = '--gen9' in args
     output = None
     if '--output' in args:
         output_index = args.index('--output')
         if output_index + 1 >= len(args):
             raise SystemExit('--output requires a path')
         output = args[output_index + 1]
+    if gen9:
+        return pack_gen9(args)
     if sum((gen2_only, gen3_only, gen3_full)) > 1:
         raise SystemExit('choose one of --gen2, --gen3 or --gen3-full')
     if gen2_only:

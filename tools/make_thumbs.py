@@ -68,6 +68,11 @@ def shrink(w, h, pal, data):
 def main():
     blobs = []
     dex_nums = [row[0] for row in DEX]
+    # --max N extends the index past the shipped table (#387..N) using any
+    # sprites already packed in sdcard/mons (see pack_pmd.py).
+    if '--max' in sys.argv:
+        top = int(sys.argv[sys.argv.index('--max') + 1])
+        dex_nums = list(range(1, top + 1))
     for dex in dex_nums:
         path = os.path.join(DIR, f'p{dex:03d}.bin')
         w, h, pal, data = read_pmd_idle_frame0(path)

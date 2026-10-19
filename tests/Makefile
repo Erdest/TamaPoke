@@ -1,7 +1,7 @@
 CXX ?= c++
 CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -I../tests/stubs -I..
 
-PET_TEST_OBJS = build/pet_tests.o build/pet.o build/species_chirp.o build/thumb_format.o build/audio_stub.o build/natures.o build/pokeballs.o build/moves.o build/battle.o
+PET_TEST_OBJS = build/pet_tests.o build/pet.o build/species_chirp.o build/thumb_format.o build/audio_stub.o build/natures.o build/pokeballs.o build/moves.o build/battle.o build/extras.o build/garden.o build/gyms.o build/achievements.o build/accessories.o build/steps.o
 BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
@@ -39,6 +39,24 @@ build/pet.o: ../pet.cpp ../pet.h ../dex.h ../audio.h ../natures.h | build
 
 build/pokeballs.o: ../pokeballs.cpp ../pokeballs.h | build
 	$(CXX) $(CXXFLAGS) -c ../pokeballs.cpp -o $@
+
+build/extras.o: ../extras.cpp ../extras.h | build
+	$(CXX) $(CXXFLAGS) -c ../extras.cpp -o $@
+
+build/garden.o: ../garden.cpp ../garden.h | build
+	$(CXX) $(CXXFLAGS) -c ../garden.cpp -o $@
+
+build/gyms.o: ../gyms.cpp ../gyms.h | build
+	$(CXX) $(CXXFLAGS) -c ../gyms.cpp -o $@
+
+build/achievements.o: ../achievements.cpp ../achievements.h | build
+	$(CXX) $(CXXFLAGS) -c ../achievements.cpp -o $@
+
+build/accessories.o: ../accessories.cpp ../accessories.h | build
+	$(CXX) $(CXXFLAGS) -c ../accessories.cpp -o $@
+
+build/steps.o: ../steps.cpp ../steps.h | build
+	$(CXX) $(CXXFLAGS) -c ../steps.cpp -o $@
 
 build/moves.o: ../moves.cpp ../moves.h | build
 	$(CXX) $(CXXFLAGS) -c ../moves.cpp -o $@

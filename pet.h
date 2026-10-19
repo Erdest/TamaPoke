@@ -5,6 +5,7 @@
 #include "dex.h"
 #include "pokeballs.h"
 #include "moves.h"
+#include "extras.h"
 
 // 1 tick = 1 minuto de juego. Baja este valor para probar mas rapido
 // (p. ej. 5000UL = las estadisticas caen 12x mas rapido).
@@ -118,6 +119,7 @@ public:
   uint8_t trAtk = 0, trDef = 0, trSpe = 0;
   BallInventory balls = {};  // Poke Ball stock (TAMAPOKE_BALLS)
   MoveSet moves = {};        // learned moves (TAMAPOKE_MOVES)
+  ExtrasState extras;        // gyms, garden, achievements, accessories (TAMAPOKE_EXTRAS)
   uint8_t nature = 0;       // 0..24 (0 = Hardy, neutral). Assigned at hatch when TAMAPOKE_NATURES is set.
   bool berryKnown = false;  // ya descubrio su baya favorita
   bool shiny = false;       // variante de color rara (se sortea en el huevo)
@@ -280,6 +282,8 @@ public:
   bool isShinyRegistered(int16_t dex) const {
     return dex >= 1 && dex <= DEX_COUNT && (dexShinyReg[(dex - 1) >> 3] & (1 << ((dex - 1) & 7)));
   }
+  PetFacts extrasFacts() const;   // inputs for achievement sync
+  uint8_t syncAchievements();     // reports facts, returns newly unlocked
   uint16_t registeredCount() const;
   uint16_t caughtCount() const;
   uint16_t knownDexCount() const;

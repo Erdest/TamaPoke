@@ -1189,6 +1189,16 @@ static void testBallCatchConsumesBallAndRegisters() {
   EXPECT_TRUE(!pet.tryCatchWithBall(150, 5, 30, 1, 1, 12, false, u2).caught);
 }
 
+static void testAchievementSyncFromPet() {
+  Pet pet = hatchedPet(4);
+  PetFacts f = pet.extrasFacts();
+  EXPECT_TRUE(f.registered >= 1);
+  EXPECT_TRUE(f.regKanto >= 1);
+  pet.battleWins = 10;
+  pet.syncAchievements();
+  EXPECT_TRUE(achUnlocked(pet.extras.ach, 26));   // Win 10 battles
+}
+
 int main() {
   testEggHatchesChosenStarter();
   testNatureScalesBattleStats();
@@ -1243,6 +1253,7 @@ int main() {
   testThumbBlobValidation();
   testSaveBackupRoundTripAndValidation();
   testBallCatchConsumesBallAndRegisters();
+  testAchievementSyncFromPet();
 
   if (failures) {
     std::cerr << failures << " Testfehler\n";

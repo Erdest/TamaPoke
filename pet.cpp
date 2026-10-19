@@ -83,6 +83,19 @@ void Pet::newEgg() {
   int shinyBase = (lastEnd == CER_FAREWELL ? 24 : 48) - careBonus();
   if (shinyBase < 8) shinyBase = 8;
   eggShiny = (random(shinyBase) == 0);
+#ifdef TAMAPOKE_EXTRAS
+  if (extras.pendingEgg) {   // reward egg from a Champion win
+    uint16_t legs[64]; uint8_t nl = 0;
+    for (int i = 1; i <= DEX_COUNT && nl < 64; i++)
+      if (DEX_TBL[i].rarity == R_LEGENDARIO) legs[nl++] = i;
+    if (nl) {
+      eggTarget = legs[random(nl)];
+      starterPick = false;
+      if (extras.pendingEgg == 2) eggShiny = true;
+    }
+    extras.pendingEgg = 0;
+  }
+#endif
   eggTaps = 0;
   fullness = 80;
   joy = 80;
@@ -500,6 +513,40 @@ uint16_t Pet::speStat() const {
   return isEgg() ? 0 : natureStat(nature, NSTAT_SPE, calcStat(DEX_TBL[speciesId].bSpe, geneSpe, level(), trSpe));
 }
 
+PetFacts Pet::extrasFacts() const {
+  PetFacts f = {};
+  uint8_t typeSeen[TYPE_FAIRY + 2] = {0};
+  for (int i = 1; i <= DEX_COUNT; i++) {
+    bool known = isRegistered(i) || isCaught(i);
+    if (!known) continue;
+    f.registered++;
+    if (i <= 151) f.regKanto++;
+    else if (i <= 251) f.regJohto++;
+    else f.regHoenn++;
+    if (isShinyRegistered(i)) f.shinies++;
+    if (isCaught(i)) {
+      if (DEX_TBL[i].type1 <= TYPE_FAIRY) typeSeen[DEX_TBL[i].type1] = 1;
+      if (DEX_TBL[i].type2 <= TYPE_FAIRY) typeSeen[DEX_TBL[i].type2] = 1;
+    }
+    if (isRegistered(i) && !hasEvolutionPath(i)) f.finalEvos++;
+  }
+  for (uint8_t t = 1; t <= TYPE_FAIRY; t++) f.typesCaught += typeSeen[t];
+  f.maxLevel = level();
+  f.streak = bestStreak;
+  f.bond = bond;
+  f.medals = (uint8_t)(totalMedals > 255 ? 255 : totalMedals);
+  f.wins = battleWins;
+  f.winStreak = bestBattleStreak;
+  f.stepsTotal = stepsTotal;
+  return f;
+}
+
+uint8_t Pet::syncAchievements() {
+  uint8_t n = extrasSyncFacts(extras, extrasFacts());
+  if (n) save();
+  return n;
+}
+
 uint16_t Pet::registeredCount() const {
   uint16_t n = 0;
   for (int i = 1; i <= DEX_COUNT; i++)
@@ -684,6 +731,9 @@ bool Pet::canRunawayNow() const {
 
 void Pet::startFarewell() {
   if (isEgg() || ceremony != CER_NONE) return;
+#ifdef TAMAPOKE_EXTRAS
+  extrasBump(extras, AS_FAREWELLS, 1);
+#endif
   lastEnd = CER_FAREWELL;
   ceremony = CER_FAREWELL;
   ceremonyUntil = millis() + CEREMONY_MS;
@@ -737,6 +787,9 @@ void Pet::hatch() {
 #ifdef TAMAPOKE_MOVES
   if (speciesId >= 1 && speciesId <= DEX_COUNT)
     hatchMoves(moves, DEX_TBL[speciesId].type1, DEX_TBL[speciesId].type2, level());
+#endif
+#ifdef TAMAPOKE_EXTRAS
+  extrasBump(extras, AS_HATCHED, 1);
 #endif
   registerSpecies(speciesId);  // criado = registrado en la pokedex
   checkMedals();     // por si nace ya en forma final (legendario)
@@ -1522,6 +1575,9 @@ void Pet::save() {
   prefs.putUChar("tdef", trDef);
   prefs.putUChar("tspe", trSpe);
   prefs.putUChar("nat", nature);
+#ifdef TAMAPOKE_EXTRAS
+  prefs.putBytes("xtra", &extras, sizeof(extras));
+#endif
   prefs.putBytes("moves", moves.slot, sizeof(moves.slot));
   prefs.putBytes("balls", balls.count, sizeof(balls.count));
   prefs.putBool("bk", berryKnown);
@@ -1609,6 +1665,14 @@ void Pet::load() {
   trAtk = prefs.getUChar("tatk", 0);
   trDef = prefs.getUChar("tdef", 0);
   trSpe = prefs.getUChar("tspe", 0);
+  extrasInit(extras);
+#ifdef TAMAPOKE_EXTRAS
+  if (prefs.getBytesLength("xtra") == sizeof(extras)) {
+    ExtrasState tmp;
+    prefs.getBytes("xtra", &tmp, sizeof(tmp));
+    extrasLoad(extras, &tmp, sizeof(tmp));
+  }
+#endif
   movesetInit(moves);
   if (prefs.getBytesLength("moves") == sizeof(moves.slot))
     prefs.getBytes("moves", moves.slot, sizeof(moves.slot));

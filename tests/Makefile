@@ -1,7 +1,7 @@
 CXX ?= c++
 CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -I../tests/stubs -I..
 
-PET_TEST_OBJS = build/pet_tests.o build/pet.o build/species_chirp.o build/thumb_format.o build/audio_stub.o build/natures.o
+PET_TEST_OBJS = build/pet_tests.o build/pet.o build/species_chirp.o build/thumb_format.o build/audio_stub.o build/natures.o build/pokeballs.o
 BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
@@ -34,6 +34,9 @@ build/pet_tests.o: pet_tests.cpp ../pet.h ../dex.h | build
 
 build/pet.o: ../pet.cpp ../pet.h ../dex.h ../audio.h ../natures.h | build
 	$(CXX) $(CXXFLAGS) -c ../pet.cpp -o $@
+
+build/pokeballs.o: ../pokeballs.cpp ../pokeballs.h | build
+	$(CXX) $(CXXFLAGS) -c ../pokeballs.cpp -o $@
 
 build/natures.o: ../natures.cpp ../natures.h | build
 	$(CXX) $(CXXFLAGS) -c ../natures.cpp -o $@

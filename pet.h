@@ -3,6 +3,7 @@
 #include <Preferences.h>
 #include "time_utils.h"
 #include "dex.h"
+#include "pokeballs.h"
 
 // 1 tick = 1 minuto de juego. Baja este valor para probar mas rapido
 // (p. ej. 5000UL = las estadisticas caen 12x mas rapido).
@@ -114,6 +115,7 @@ public:
   // genes (90-110%, se tiran al eclosionar) y entrenamiento (0-100)
   uint8_t geneAtk = 100, geneDef = 100, geneSpe = 100;
   uint8_t trAtk = 0, trDef = 0, trSpe = 0;
+  BallInventory balls = {};  // Poke Ball stock (TAMAPOKE_BALLS)
   uint8_t nature = 0;       // 0..24 (0 = Hardy, neutral). Assigned at hatch when TAMAPOKE_NATURES is set.
   bool berryKnown = false;  // ya descubrio su baya favorita
   bool shiny = false;       // variante de color rara (se sortea en el huevo)
@@ -287,6 +289,11 @@ public:
   uint16_t applyDexRewards();
   uint8_t catchChanceForWild(int16_t wildDex, uint8_t wildLevel, uint8_t petLevel, bool closeWin) const;
   uint8_t respectCatchChanceForWild(int16_t wildDex, uint8_t wildLevel, uint8_t petLevel) const;
+  // Ball-aware catch: picks the best ball in stock, consumes it, resolves with
+  // the pokeballs.h formula. Returns the outcome; ballUsed receives the ball.
+  CatchOutcome tryCatchWithBall(int16_t wildDex, uint8_t wildLevel, uint8_t petLevel,
+                                uint8_t wildHpPct, uint8_t round, uint8_t hour,
+                                bool shinyVariant, BallType &ballUsed);
   bool tryCatchWild(int16_t wildDex, uint8_t wildLevel, uint8_t petLevel, bool closeWin,
                     uint8_t luckRoll, bool shinyVariant = false);
   bool tryRespectCatchWild(int16_t wildDex, uint8_t wildLevel, uint8_t petLevel,

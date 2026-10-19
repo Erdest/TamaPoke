@@ -3062,8 +3062,17 @@ void battleTap(int16_t x, int16_t y) {
                                                        (uint8_t)random(100), battleShiny);
           battleCatchChance = pet.respectCatchChanceForWild(battleDex, battleLevel, battlePlayer.level);
         } else {
+#ifdef TAMAPOKE_BALLS
+          BallType usedBall;
+          uint8_t hpPct = closeWin ? 25 : 50;
+          CatchOutcome co = pet.tryCatchWithBall(battleDex, battleLevel, battlePlayer.level, hpPct,
+                                                 (uint8_t)(battleRun.round ? battleRun.round : 1),
+                                                 (uint8_t)sceneHourFromEpoch(expeditionNowEpoch()), battleShiny, usedBall);
+          battleCatchSuccess = co.caught;
+#else
           battleCatchSuccess = pet.tryCatchWild(battleDex, battleLevel, battlePlayer.level, closeWin,
                                                 (uint8_t)random(100), battleShiny);
+#endif
           battleCatchChance = pet.catchChanceForWild(battleDex, battleLevel, battlePlayer.level, closeWin);
         }
         sfxPlay(battleCatchSuccess ? SFX_CATCH_OK : SFX_CATCH_FAIL);

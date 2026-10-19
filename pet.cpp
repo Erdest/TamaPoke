@@ -617,6 +617,32 @@ uint8_t Pet::respectCatchChanceForWild(int16_t wildDex, uint8_t wildLevel, uint8
   return chance;
 }
 
+CatchOutcome Pet::tryCatchWithBall(int16_t wildDex, uint8_t wildLevel, uint8_t petLevel,
+                                   uint8_t wildHpPct, uint8_t round, uint8_t hour,
+                                   bool shinyVariant, BallType &ballUsed) {
+  CatchOutcome out = {};
+  ballUsed = BALL_POKE;
+  if (wildDex < 1 || wildDex > DEX_COUNT) return out;
+  const DexEntry &wild = DEX_TBL[wildDex];
+  if (wild.rarity == R_LEGENDARIO && !ballAvailable(balls, BALL_MASTER)) return out;
+  // strongest ball in stock; Poke Ball is the unlimited fallback
+  static const BallType order[] = {BALL_MASTER, BALL_ULTRA, BALL_GREAT, BALL_POKE};
+  for (BallType b : order) if (ballAvailable(balls, b)) { ballUsed = b; break; }
+  CatchContext cx = {petLevel, wildLevel, wildHpPct, wild.type1, wild.type2, round, hour,
+                     stepCatchBonus()};
+  uint8_t shakes[3] = {(uint8_t)random(100), (uint8_t)random(100), (uint8_t)random(100)};
+  out = resolveCatch(ballUsed, cx, (uint8_t)random(100), shakes, (uint8_t)random(100),
+                     (uint8_t)random(100));
+  ballConsume(balls, ballUsed);
+  if (out.caught) {
+    registerCaught(wildDex, shinyVariant || out.shinyRoll);
+    joy = clamp100((int)joy + 4);
+    addBond(1 + out.bondBonus);
+  }
+  save();
+  return out;
+}
+
 bool Pet::tryCatchWild(int16_t wildDex, uint8_t wildLevel, uint8_t petLevel, bool closeWin,
                        uint8_t luckRoll, bool shinyVariant) {
   uint8_t chance = catchChanceForWild(wildDex, wildLevel, petLevel, closeWin);
@@ -1492,6 +1518,7 @@ void Pet::save() {
   prefs.putUChar("tdef", trDef);
   prefs.putUChar("tspe", trSpe);
   prefs.putUChar("nat", nature);
+  prefs.putBytes("balls", balls.count, sizeof(balls.count));
   prefs.putBool("bk", berryKnown);
   prefs.putBool("shy", shiny);
   prefs.putBool("eshy", eggShiny);
@@ -1577,6 +1604,9 @@ void Pet::load() {
   trAtk = prefs.getUChar("tatk", 0);
   trDef = prefs.getUChar("tdef", 0);
   trSpe = prefs.getUChar("tspe", 0);
+  ballInventoryInit(balls);
+  if (prefs.getBytesLength("balls") == sizeof(balls.count))
+    prefs.getBytes("balls", balls.count, sizeof(balls.count));
   nature = prefs.getUChar("nat", 0);   // absent in older saves -> Hardy (neutral)
   if (nature >= NATURE_COUNT) nature = 0;
   berryKnown = prefs.getBool("bk", false);

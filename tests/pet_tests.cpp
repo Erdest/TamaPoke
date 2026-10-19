@@ -1170,6 +1170,25 @@ static void testNatureSurvivesSaveAndLoad() {
   EXPECT_EQ(loaded.nature, 21);
 }
 
+static void testBallCatchConsumesBallAndRegisters() {
+  Pet pet = hatchedPet(4);
+  ballInventoryInit(pet.balls);
+  EXPECT_EQ(pet.balls.count[BALL_GREAT], BALL_STARTER_GREAT);
+  BallType used = BALL_POKE;
+  bool caught = false;
+  for (int i = 0; i < 20 && !caught; i++) {
+    uint8_t before = pet.balls.count[BALL_GREAT];
+    CatchOutcome o = pet.tryCatchWithBall(16, 3, 30, 10, 1, 12, false, used);
+    if (before) EXPECT_EQ(used, BALL_GREAT);
+    caught = o.caught;
+  }
+  EXPECT_TRUE(caught);
+  EXPECT_TRUE(pet.balls.count[BALL_GREAT] < BALL_STARTER_GREAT);
+  // legendaries are uncatchable without a Master Ball
+  BallType u2;
+  EXPECT_TRUE(!pet.tryCatchWithBall(150, 5, 30, 1, 1, 12, false, u2).caught);
+}
+
 int main() {
   testEggHatchesChosenStarter();
   testNatureScalesBattleStats();
@@ -1223,6 +1242,7 @@ int main() {
   testGen3DataAndEvolutionBranches();
   testThumbBlobValidation();
   testSaveBackupRoundTripAndValidation();
+  testBallCatchConsumesBallAndRegisters();
 
   if (failures) {
     std::cerr << failures << " Testfehler\n";

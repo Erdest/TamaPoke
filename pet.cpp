@@ -734,6 +734,10 @@ void Pet::hatch() {
   evoDeclinedLv = 0;
   evoDeclinedAge = 0;
   farDeclinedAge = 0;
+#ifdef TAMAPOKE_MOVES
+  if (speciesId >= 1 && speciesId <= DEX_COUNT)
+    hatchMoves(moves, DEX_TBL[speciesId].type1, DEX_TBL[speciesId].type2, level());
+#endif
   registerSpecies(speciesId);  // criado = registrado en la pokedex
   checkMedals();     // por si nace ya en forma final (legendario)
   applyPendingStepRewards();
@@ -1518,6 +1522,7 @@ void Pet::save() {
   prefs.putUChar("tdef", trDef);
   prefs.putUChar("tspe", trSpe);
   prefs.putUChar("nat", nature);
+  prefs.putBytes("moves", moves.slot, sizeof(moves.slot));
   prefs.putBytes("balls", balls.count, sizeof(balls.count));
   prefs.putBool("bk", berryKnown);
   prefs.putBool("shy", shiny);
@@ -1604,6 +1609,9 @@ void Pet::load() {
   trAtk = prefs.getUChar("tatk", 0);
   trDef = prefs.getUChar("tdef", 0);
   trSpe = prefs.getUChar("tspe", 0);
+  movesetInit(moves);
+  if (prefs.getBytesLength("moves") == sizeof(moves.slot))
+    prefs.getBytes("moves", moves.slot, sizeof(moves.slot));
   ballInventoryInit(balls);
   if (prefs.getBytesLength("balls") == sizeof(balls.count))
     prefs.getBytes("balls", balls.count, sizeof(balls.count));

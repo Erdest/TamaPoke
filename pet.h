@@ -4,6 +4,7 @@
 #include "time_utils.h"
 #include "dex.h"
 #include "pokeballs.h"
+#include "moves.h"
 
 // 1 tick = 1 minuto de juego. Baja este valor para probar mas rapido
 // (p. ej. 5000UL = las estadisticas caen 12x mas rapido).
@@ -116,6 +117,7 @@ public:
   uint8_t geneAtk = 100, geneDef = 100, geneSpe = 100;
   uint8_t trAtk = 0, trDef = 0, trSpe = 0;
   BallInventory balls = {};  // Poke Ball stock (TAMAPOKE_BALLS)
+  MoveSet moves = {};        // learned moves (TAMAPOKE_MOVES)
   uint8_t nature = 0;       // 0..24 (0 = Hardy, neutral). Assigned at hatch when TAMAPOKE_NATURES is set.
   bool berryKnown = false;  // ya descubrio su baya favorita
   bool shiny = false;       // variante de color rara (se sortea en el huevo)

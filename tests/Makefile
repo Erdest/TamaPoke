@@ -1,18 +1,19 @@
 CXX ?= c++
 CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -I../tests/stubs -I..
 
-PET_TEST_OBJS = build/pet_tests.o build/pet.o build/species_chirp.o build/thumb_format.o build/audio_stub.o build/natures.o build/pokeballs.o
+PET_TEST_OBJS = build/pet_tests.o build/pet.o build/species_chirp.o build/thumb_format.o build/audio_stub.o build/natures.o build/pokeballs.o build/moves.o build/battle.o
 BATTLE_TEST_OBJS = build/battle_tests.o build/battle.o
 
 .PHONY: test web-test clean
 
-test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests build/dex9_tests web-test
+test: build/pet_tests build/battle_tests build/pokeball_tests build/nature_tests build/garden_tests build/move_tests build/movebattle_tests build/gym_tests build/misc_tests build/progress_tests build/content_tests build/system_tests build/dex9_tests web-test
 	./build/pet_tests
 	./build/battle_tests
 	./build/pokeball_tests
 	./build/nature_tests
 	./build/garden_tests
 	./build/move_tests
+	./build/movebattle_tests
 	./build/gym_tests
 	./build/misc_tests
 	./build/progress_tests
@@ -37,6 +38,9 @@ build/pet.o: ../pet.cpp ../pet.h ../dex.h ../audio.h ../natures.h | build
 
 build/pokeballs.o: ../pokeballs.cpp ../pokeballs.h | build
 	$(CXX) $(CXXFLAGS) -c ../pokeballs.cpp -o $@
+
+build/moves.o: ../moves.cpp ../moves.h | build
+	$(CXX) $(CXXFLAGS) -c ../moves.cpp -o $@
 
 build/natures.o: ../natures.cpp ../natures.h | build
 	$(CXX) $(CXXFLAGS) -c ../natures.cpp -o $@
@@ -70,6 +74,9 @@ build/nature_tests: nature_tests.cpp ../natures.cpp ../natures.h | build
 
 build/garden_tests: garden_tests.cpp ../garden.cpp ../garden.h | build
 	$(CXX) $(CXXFLAGS) garden_tests.cpp ../garden.cpp -o $@
+
+build/movebattle_tests: movebattle_tests.cpp ../movebattle.cpp ../movebattle.h ../moves.cpp ../battle.cpp ../dex.h | build
+	$(CXX) $(CXXFLAGS) movebattle_tests.cpp ../movebattle.cpp ../moves.cpp ../battle.cpp -o $@
 
 build/move_tests: move_tests.cpp ../moves.cpp ../moves.h ../battle.cpp ../battle.h ../dex.h | build
 	$(CXX) $(CXXFLAGS) move_tests.cpp ../moves.cpp ../battle.cpp -o $@
